@@ -164,12 +164,9 @@ function createFlowElements(members, filters, selectedMemberId) {
       visibleMembers = [...members];
     }
   } 
-  // State 1: No query and no selection -> show top-level roots only (heads of family)
+  // State 1: No query and no selection -> show the entire family tree!
   else {
-    visibleMembers = members.filter((member) => {
-      const hasParent = member.parentId && visibleIds.has(member.parentId);
-      return !hasParent;
-    });
+    visibleMembers = [...members];
   }
 
   // Filter visible members by branch if filter is set
