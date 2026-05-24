@@ -404,10 +404,20 @@ nav a {
 }
 
 .flow-shell .react-flow__node {
-  width: 154px;
+  width: 172px;
   border: 2px solid #d9cfbf;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.94);
+}
+
+.flow-shell .react-flow__edge-path {
+  filter: drop-shadow(0 2px 2px rgba(35, 32, 28, 0.18));
+}
+
+.flow-shell .react-flow__edge-text {
+  fill: #4b463f;
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .flow-member {
@@ -432,6 +442,12 @@ nav a {
 }
 
 .flow-member span {
+  color: #34524a;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.flow-member small {
   color: #786e62;
   font-size: 0.78rem;
 }
@@ -829,6 +845,13 @@ nav a {
 
 .admin-panel input[type="file"] {
   min-height: auto;
+}
+
+.field-help {
+  margin: -4px 0 2px;
+  color: #635b52;
+  font-size: 0.82rem;
+  line-height: 1.5;
 }
 
 .admin-panel button {

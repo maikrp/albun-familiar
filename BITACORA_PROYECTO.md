@@ -257,6 +257,20 @@ Resultado:
 - Se mantiene en minuscula conectores comunes como `de`, `del`, `la`, `las`, `los` y `y` cuando no son la primera palabra.
 - Se verifico que la pantalla no reporte errores de consola al abrir `/admin` sin personas cargadas.
 
+### 11. Mejora de conexiones genealogicas
+
+Se mejoro el manejo visual y conceptual de relaciones familiares en el arbol.
+
+Resultado:
+
+- Las lineas del arbol ahora usan conexion vertical desde la parte inferior de la persona origen hacia la parte superior de la persona relacionada.
+- Se agrego mas separacion horizontal y vertical para evitar tarjetas pegadas.
+- Las lineas tienen mayor grosor, flecha y etiqueta de vinculo.
+- Se agrego el campo `Vinculo con la persona seleccionada` en el panel administrativo.
+- Se reemplazo `Tronco principal` por `Persona inicial del arbol`.
+- El perfil muestra el vinculo guardado.
+- Se agrego ayuda en el formulario explicando que, para un arbol genealogico correcto, lo ideal es conectar hijos con padre/madre directo y usar sobrina/nieta/prima como descripcion si falta una generacion intermedia.
+
 ## Verificaciones realizadas
 
 Se ejecuto:
@@ -281,6 +295,7 @@ Resultados:
 - Panel administrativo separado de la pagina principal.
 - Normalizacion automatica a nombre propio en el panel administrativo.
 - Correccion de error por perfil sin persona seleccionada.
+- Lineas genealogicas mas visibles con etiqueta de vinculo.
 
 URL local de desarrollo:
 
@@ -343,6 +358,7 @@ El repo esta publicado en GitHub y sincronizado con la rama `main`.
 ## Historial de commits
 
 ```text
+Pendiente Mejorar conexiones genealogicas y vinculos
 e7204c9 Normalizar captura de nombres familiares
 c8d2db3 Separar panel administrativo del album
 feea566 Limpiar datos de ejemplo familiar

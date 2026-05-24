@@ -2,7 +2,9 @@ import React, { useMemo, useState } from 'react';
 import {
   Background,
   Controls,
+  MarkerType,
   MiniMap,
+  Position,
   ReactFlow,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -43,6 +45,7 @@ const emptyMemberForm = {
   deathYear: '',
   origin: '',
   parentId: '',
+  relationship: '',
   photo: '',
   story: '',
 };
@@ -86,46 +89,65 @@ function createFlowElements(members, filters, selectedMemberId) {
   const generationCache = new Map();
   const visibleMembers = members.filter((member) => {
     const generation = getMemberGeneration(member, members, generationCache);
-    const haystack = `${member.name} ${member.branch} ${member.origin} ${member.role}`.toLowerCase();
+    const haystack = `${member.name} ${member.branch} ${member.origin} ${member.role} ${member.relationship || ''}`.toLowerCase();
     const matchesSearch = haystack.includes(filters.query.toLowerCase());
     const matchesBranch = filters.branch === 'all' || member.branch === filters.branch;
     const matchesGeneration = filters.generation === 'all' || String(generation) === filters.generation;
     return matchesSearch && matchesBranch && matchesGeneration;
   });
   const visibleIds = new Set(visibleMembers.map((member) => member.id));
-  const grouped = visibleMembers.reduce((accumulator, member) => {
-    const generation = getMemberGeneration(member, members, generationCache);
+  const childrenByParent = visibleMembers.reduce((accumulator, member) => {
+    if (!member.parentId || !visibleIds.has(member.parentId)) {
+      return accumulator;
+    }
+
     return {
       ...accumulator,
-      [generation]: [...(accumulator[generation] || []), member],
+      [member.parentId]: [...(accumulator[member.parentId] || []), member],
     };
   }, {});
+  const roots = visibleMembers.filter((member) => !member.parentId || !visibleIds.has(member.parentId));
+  const positions = new Map();
+  let nextLeaf = 0;
 
-  const nodes = Object.entries(grouped).flatMap(([generation, generationMembers]) => {
-    const y = Number(generation) * 210;
-    const totalWidth = (generationMembers.length - 1) * 210;
-    return generationMembers.map((member, index) => {
-      const branchStyle = getBranchStyle(member.branch);
-      return {
-        id: member.id,
-        position: { x: index * 210 - totalWidth / 2, y },
-        data: {
-          label: (
-            <div className="flow-member">
-              <img src={member.photo} alt="" />
-              <strong>{member.name}</strong>
-              <span>{member.years}</span>
-            </div>
-          ),
-        },
-        style: {
-          borderColor: branchStyle.color,
-          boxShadow: selectedMemberId === member.id
-            ? `0 0 0 3px ${branchStyle.color}44, 0 14px 30px rgba(35, 32, 28, 0.16)`
-            : '0 10px 24px rgba(35, 32, 28, 0.1)',
-        },
-      };
-    });
+  function layoutMember(member, depth) {
+    const children = childrenByParent[member.id] || [];
+    const childXs = children.map((child) => layoutMember(child, depth + 1));
+    const x = childXs.length > 0
+      ? childXs.reduce((total, value) => total + value, 0) / childXs.length
+      : nextLeaf++ * 250;
+    positions.set(member.id, { x, y: depth * 245 });
+    return x;
+  }
+
+  roots.forEach((root) => layoutMember(root, 0));
+  const minX = Math.min(...Array.from(positions.values()).map((position) => position.x), 0);
+
+  const nodes = visibleMembers.map((member) => {
+    const branchStyle = getBranchStyle(member.branch);
+    const position = positions.get(member.id) || { x: 0, y: 0 };
+    return {
+      id: member.id,
+      sourcePosition: Position.Bottom,
+      targetPosition: Position.Top,
+      position: { x: position.x - minX, y: position.y },
+      data: {
+        label: (
+          <div className="flow-member">
+            <img src={member.photo} alt="" />
+            <strong>{member.name}</strong>
+            <span>{member.relationship || member.role}</span>
+            <small>{member.years}</small>
+          </div>
+        ),
+      },
+      style: {
+        borderColor: branchStyle.color,
+        boxShadow: selectedMemberId === member.id
+          ? `0 0 0 3px ${branchStyle.color}44, 0 14px 30px rgba(35, 32, 28, 0.16)`
+          : '0 10px 24px rgba(35, 32, 28, 0.1)',
+      },
+    };
   });
 
   const edges = visibleMembers
@@ -136,7 +158,15 @@ function createFlowElements(members, filters, selectedMemberId) {
       target: member.id,
       type: 'smoothstep',
       animated: selectedMemberId === member.id,
-      style: { stroke: getBranchStyle(member.branch).color, strokeWidth: 2 },
+      label: member.relationship || 'Descendiente',
+      labelBgPadding: [8, 4],
+      labelBgBorderRadius: 6,
+      labelBgStyle: { fill: '#fffaf2', fillOpacity: 0.92 },
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: getBranchStyle(member.branch).color,
+      },
+      style: { stroke: getBranchStyle(member.branch).color, strokeWidth: 3 },
     }));
 
   return { nodes, edges };
@@ -339,6 +369,7 @@ export default function App() {
     const normalizedBranch = toProperName(memberForm.branch);
     const normalizedRole = toProperName(memberForm.role);
     const normalizedOrigin = toProperName(memberForm.origin);
+    const normalizedRelationship = toProperName(memberForm.relationship);
 
     if (!normalizedName || !normalizedBranch) {
       setAdminMessage('Agrega al menos nombre y rama familiar.');
@@ -353,6 +384,7 @@ export default function App() {
       name: normalizedName,
       branch: normalizedBranch,
       role: normalizedRole || 'Miembro Familiar',
+      relationship: memberForm.parentId ? normalizedRelationship || 'Descendiente' : 'Persona Inicial',
       years,
       origin: normalizedOrigin || 'Por Documentar',
       photo: memberForm.photo.trim() || '/assets/family-album-cover.jpg',
@@ -591,13 +623,41 @@ export default function App() {
                 value={memberForm.parentId}
                 onChange={(event) => updateMemberForm('parentId', event.target.value)}
               >
-                <option value="">Tronco principal</option>
+                <option value="">Persona inicial del arbol</option>
                 {allMembers.map((member) => (
                   <option key={member.id} value={member.id}>
                     {member.name}
                   </option>
                 ))}
               </select>
+              <label htmlFor="member-relationship">Vinculo con la persona seleccionada</label>
+              <select
+                id="member-relationship"
+                value={memberForm.relationship}
+                onChange={(event) => updateMemberForm('relationship', event.target.value)}
+              >
+                <option value="">Seleccionar vinculo</option>
+                <option value="Hija">Hija</option>
+                <option value="Hijo">Hijo</option>
+                <option value="Madre">Madre</option>
+                <option value="Padre">Padre</option>
+                <option value="Pareja">Pareja</option>
+                <option value="Hermana">Hermana</option>
+                <option value="Hermano">Hermano</option>
+                <option value="Nieta">Nieta</option>
+                <option value="Nieto">Nieto</option>
+                <option value="Sobrina">Sobrina</option>
+                <option value="Sobrino">Sobrino</option>
+                <option value="Tia">Tia</option>
+                <option value="Tio">Tio</option>
+                <option value="Prima">Prima</option>
+                <option value="Primo">Primo</option>
+                <option value="Otro">Otro</option>
+              </select>
+              <p className="field-help">
+                Para que el arbol dibuje bien las lineas, conecta hijos con su padre o madre directo. Usa nieta,
+                sobrina o prima como descripcion cuando aun no tengas cargada la generacion intermedia.
+              </p>
               <label htmlFor="member-photo-url">URL de fotografia</label>
               <input
                 id="member-photo-url"
@@ -885,9 +945,13 @@ export default function App() {
                     <dd>{selectedGeneration + 1}</dd>
                   </div>
                   <div>
-                    <dt>Descendientes directos</dt>
-                    <dd>{selectedChildren.length}</dd>
-                  </div>
+                <dt>Vinculo</dt>
+                <dd>{selectedMember.relationship || selectedMember.role}</dd>
+              </div>
+              <div>
+                <dt>Descendientes directos</dt>
+                <dd>{selectedChildren.length}</dd>
+              </div>
                 </dl>
               </div>
             </div>
