@@ -94,42 +94,167 @@ function getMemberGeneration(member, members, cache = new Map()) {
   return generation;
 }
 
-function createFlowElements(members, filters, selectedMemberId) {
-  const generationCache = new Map();
-  const visibleMembers = members.filter((member) => {
-    const generation = getMemberGeneration(member, members, generationCache);
-    const haystack = `${member.name} ${member.nationalId || ''} ${member.branch} ${member.origin} ${member.role} ${member.relationship || ''}`.toLowerCase();
-    const matchesSearch = haystack.includes(filters.query.toLowerCase());
-    const matchesBranch = filters.branch === 'all' || member.branch === filters.branch;
-    const matchesGeneration = filters.generation === 'all' || String(generation) === filters.generation;
-    return matchesSearch && matchesBranch && matchesGeneration;
+function getDescendants(memberId, members, visited = new Set()) {
+  if (visited.has(memberId)) return [];
+  visited.add(memberId);
+  
+  const children = members.filter((m) => m.parentId === memberId);
+  const descendants = [...children];
+  children.forEach((child) => {
+    descendants.push(...getDescendants(child.id, members, visited));
   });
-  const visibleIds = new Set(visibleMembers.map((member) => member.id));
+  return descendants;
+}
+
+function createFlowElements(members, filters, selectedMemberId) {
+  const visibleIds = new Set(members.map((member) => member.id));
+
+  const findPartner = (member, candidates) => {
+    if (member.parejaId) {
+      const match = candidates.find((m) => m.id === member.parejaId);
+      if (match) return match;
+    }
+    const parejaMatch = candidates.find((m) => m.parejaId === member.id);
+    if (parejaMatch) return parejaMatch;
+    
+    if (member.role === 'Padre' || member.role === 'Madre') {
+      const children = candidates.filter((c) => c.parentId === member.id);
+      for (const child of children) {
+        if (child.padreId && child.madreId) {
+          const otherParentId = child.padreId === member.id ? child.madreId : child.padreId;
+          const partner = candidates.find((m) => m.id === otherParentId);
+          if (partner) return partner;
+        }
+      }
+    }
+    return null;
+  };
+
+  let visibleMembers = [];
+
+  // If search query is active, display matching members
+  if (filters.query && filters.query.trim().length > 0) {
+    const queryLower = filters.query.toLowerCase();
+    visibleMembers = members.filter((member) => {
+      const haystack = `${member.name} ${member.nationalId || ''} ${member.branch} ${member.origin} ${member.role} ${member.relationship || ''}`.toLowerCase();
+      return haystack.includes(queryLower);
+    });
+  } 
+  // If a member is selected, display only that member and their descendants
+  else if (selectedMemberId) {
+    const selected = members.find((m) => m.id === selectedMemberId);
+    if (selected) {
+      const descendants = getDescendants(selectedMemberId, members);
+      visibleMembers = [selected, ...descendants];
+      
+      // Also, if the selected member has a partner, let's include the partner so they appear side-by-side!
+      const partner = findPartner(selected, members);
+      if (partner && !visibleMembers.some((m) => m.id === partner.id)) {
+        visibleMembers.push(partner);
+      }
+      
+      // Also check if any descendants have partners and include them too!
+      descendants.forEach((desc) => {
+        const descPartner = findPartner(desc, members);
+        if (descPartner && !visibleMembers.some((m) => m.id === descPartner.id)) {
+          visibleMembers.push(descPartner);
+        }
+      });
+    } else {
+      visibleMembers = [...members];
+    }
+  } 
+  // State 1: No query and no selection -> show top-level roots only (heads of family)
+  else {
+    visibleMembers = members.filter((member) => {
+      const hasParent = member.parentId && visibleIds.has(member.parentId);
+      return !hasParent;
+    });
+  }
+
+  // Filter visible members by branch if filter is set
+  if (filters.branch !== 'all') {
+    visibleMembers = visibleMembers.filter((m) => m.branch === filters.branch);
+  }
+
+  const activeIds = new Set(visibleMembers.map((m) => m.id));
+
+  // Exclude secondary partners from roots so they don't start duplicate vertical columns
+  const roots = visibleMembers.filter((member) => {
+    const hasParent = member.parentId && activeIds.has(member.parentId);
+    if (hasParent) return false;
+
+    const partner = findPartner(member, visibleMembers);
+    if (partner) {
+      const partnerHasParent = partner.parentId && activeIds.has(partner.parentId);
+      if (partnerHasParent) return false;
+
+      // Both are top-level roots, let's designate the primary root (e.g. Padre or alphabetical name)
+      if (!member.parentId && !partner.parentId) {
+        const isMemberPrimary = member.role === 'Padre' || (partner.role !== 'Padre' && member.name < partner.name);
+        if (!isMemberPrimary) return false;
+      }
+    }
+    return true;
+  });
+
   const childrenByParent = visibleMembers.reduce((accumulator, member) => {
-    if (!member.parentId || !visibleIds.has(member.parentId)) {
+    if (!member.parentId || !activeIds.has(member.parentId)) {
       return accumulator;
     }
-
     return {
       ...accumulator,
       [member.parentId]: [...(accumulator[member.parentId] || []), member],
     };
   }, {});
-  const roots = visibleMembers.filter((member) => !member.parentId || !visibleIds.has(member.parentId));
+
   const positions = new Map();
   let nextLeaf = 0;
 
   function layoutMember(member, depth) {
+    if (positions.has(member.id)) return positions.get(member.id).x;
+
     const children = childrenByParent[member.id] || [];
-    const childXs = children.map((child) => layoutMember(child, depth + 1));
-    const x = childXs.length > 0
-      ? childXs.reduce((total, value) => total + value, 0) / childXs.length
-      : nextLeaf++ * 250;
+    const partner = findPartner(member, visibleMembers);
+
+    // Merge children of both partners to ensure complete centered descendants layout
+    let allChildren = [...children];
+    if (partner) {
+      const partnerChildren = childrenByParent[partner.id] || [];
+      partnerChildren.forEach((child) => {
+        if (!allChildren.some((c) => c.id === child.id)) {
+          allChildren.push(child);
+        }
+      });
+    }
+
+    const childXs = allChildren.map((child) => layoutMember(child, depth + 1));
+
+    let x;
+    if (childXs.length > 0) {
+      x = childXs.reduce((total, value) => total + value, 0) / childXs.length;
+    } else {
+      x = nextLeaf++ * 280;
+    }
+
     positions.set(member.id, { x, y: depth * 310 });
+
+    if (partner) {
+      positions.set(partner.id, { x: x + 160, y: depth * 310 });
+    }
+
     return x;
   }
 
   roots.forEach((root) => layoutMember(root, 0));
+  
+  // Clean up any remaining unpositioned nodes
+  visibleMembers.forEach((member) => {
+    if (!positions.has(member.id)) {
+      positions.set(member.id, { x: nextLeaf++ * 280, y: 0 });
+    }
+  });
+
   const minX = Math.min(...Array.from(positions.values()).map((position) => position.x), 0);
 
   const nodes = visibleMembers.map((member) => {
@@ -159,24 +284,53 @@ function createFlowElements(members, filters, selectedMemberId) {
     };
   });
 
-  const edges = visibleMembers
-    .filter((member) => member.parentId && visibleIds.has(member.parentId))
-    .map((member) => ({
-      id: `${member.parentId}-${member.id}`,
-      source: member.parentId,
-      target: member.id,
-      type: 'smoothstep',
-      animated: selectedMemberId === member.id,
-      label: `↓ ${member.relationship || 'Descendiente'}`,
-      labelBgPadding: [8, 4],
-      labelBgBorderRadius: 6,
-      labelBgStyle: { fill: '#fffaf2', fillOpacity: 0.92 },
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        color: getBranchStyle(member.branch).color,
-      },
-      style: { stroke: getBranchStyle(member.branch).color, strokeWidth: 5 },
-    }));
+  const edges = [];
+
+  // Draw standard descent edges
+  visibleMembers.forEach((member) => {
+    if (member.parentId && activeIds.has(member.parentId)) {
+      const partner = findPartner(member, visibleMembers);
+      // Avoid creating double descent edges to a child if the partner already has one
+      if (partner && partner.id < member.parentId && childrenByParent[partner.id]?.some((c) => c.id === member.id)) {
+        return;
+      }
+      edges.push({
+        id: `${member.parentId}-${member.id}`,
+        source: member.parentId,
+        target: member.id,
+        type: 'smoothstep',
+        animated: selectedMemberId === member.id,
+        label: `↓ ${member.relationship || 'Descendiente'}`,
+        labelBgPadding: [8, 4],
+        labelBgBorderRadius: 6,
+        labelBgStyle: { fill: '#fffaf2', fillOpacity: 0.92 },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          color: getBranchStyle(member.branch).color,
+        },
+        style: { stroke: getBranchStyle(member.branch).color, strokeWidth: 5 },
+      });
+    }
+  });
+
+  // Draw golden partner couple connection edges
+  visibleMembers.forEach((member) => {
+    const partner = findPartner(member, visibleMembers);
+    if (partner && member.id < partner.id) {
+      edges.push({
+        id: `${member.id}-${partner.id}-couple`,
+        source: member.id,
+        target: partner.id,
+        type: 'straight',
+        label: '💍 Pareja',
+        labelStyle: { fill: '#b9822f', fontWeight: 'bold' },
+        labelBgPadding: [6, 2],
+        labelBgBorderRadius: 4,
+        labelBgStyle: { fill: '#fffaf2', fillOpacity: 0.9 },
+        style: { stroke: '#b9822f', strokeWidth: 4, strokeDasharray: '5,5' },
+      });
+    }
+  });
 
   return { nodes, edges };
 }
@@ -579,6 +733,9 @@ export default function App() {
           parentId: dbMember.parent_id || null,
           custom: true,
           createdBy: dbMember.creado_por || null,
+          padreId: dbMember.padre_id || null,
+          madreId: dbMember.madre_id || null,
+          parejaId: dbMember.pareja_id || null,
         }));
 
         setCustomMembers(mappedMembers);
@@ -862,6 +1019,9 @@ export default function App() {
             parentId: fData.parent_id,
             custom: true,
             createdBy: fData.creado_por || null,
+            padreId: fData.padre_id || null,
+            madreId: fData.madre_id || null,
+            parejaId: fData.pareja_id || null,
           };
           newParentsToAppend.push(newFatherMember);
         }
@@ -908,6 +1068,9 @@ export default function App() {
             parentId: mData.parent_id,
             custom: true,
             createdBy: mData.creado_por || null,
+            padreId: mData.padre_id || null,
+            madreId: mData.madre_id || null,
+            parejaId: mData.pareja_id || null,
           };
           newParentsToAppend.push(newMotherMember);
         }
@@ -956,6 +1119,9 @@ export default function App() {
           parentId: data.parent_id,
           custom: true,
           createdBy: data.creado_por || null,
+          padreId: data.padre_id || null,
+          madreId: data.madre_id || null,
+          parejaId: data.pareja_id || null,
         };
 
         const nextMembers = customMembers.map((m) => (m.id === editingMemberId ? updatedMember : m));
@@ -990,6 +1156,9 @@ export default function App() {
           parentId: data.parent_id,
           custom: true,
           createdBy: data.creado_por || null,
+          padreId: data.padre_id || null,
+          madreId: data.madre_id || null,
+          parejaId: data.pareja_id || null,
         };
 
         setCustomMembers([...customMembers, ...newParentsToAppend, newMember]);
@@ -1624,6 +1793,39 @@ export default function App() {
               ))}
             </select>
           </div>
+          {selectedMember && (
+            <button
+              onClick={() => setSelectedMember(null)}
+              className="secondary-link"
+              style={{
+                marginTop: '1rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                cursor: 'pointer',
+                padding: '0.5rem 1rem',
+                border: '1px solid rgba(234, 88, 12, 0.3)',
+                borderRadius: '6px',
+                backgroundColor: 'rgba(234, 88, 12, 0.05)',
+                color: '#ea580c',
+                fontWeight: '600',
+                fontSize: '0.85rem',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(234, 88, 12, 0.1)';
+                e.currentTarget.style.borderColor = 'rgba(234, 88, 12, 0.5)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(234, 88, 12, 0.05)';
+                e.currentTarget.style.borderColor = 'rgba(234, 88, 12, 0.3)';
+              }}
+              type="button"
+            >
+              <BookOpen size={16} />
+              Ver todas las cabezas de familia
+            </button>
+          )}
           <div className="branch-legend">
             {branchOptions.map((branch) => (
               <span key={branch} style={{ '--branch-color': getBranchStyle(branch).color }}>
