@@ -8,10 +8,14 @@ import {
   FolderArchive,
   GitBranch,
   Heart,
+  Image,
   Lock,
+  Plus,
+  Save,
   Search,
   Shield,
   Sparkles,
+  Trash2,
   TreePine,
   UserRound,
   X,
@@ -21,6 +25,27 @@ import { isSupabaseConfigured } from './lib/supabase.js';
 
 const usersStorageKey = 'family-users';
 const sessionStorageKey = 'family-session';
+const customMembersStorageKey = 'family-custom-members';
+const customGalleryStorageKey = 'family-custom-gallery';
+
+const emptyMemberForm = {
+  name: '',
+  branch: '',
+  role: '',
+  birthYear: '',
+  deathYear: '',
+  origin: '',
+  parentId: '',
+  photo: '',
+  story: '',
+};
+
+const emptyPhotoForm = {
+  title: '',
+  year: '',
+  branch: '',
+  image: '',
+};
 
 function buildTree(members, parentId = null) {
   return members
@@ -60,9 +85,18 @@ function Stat({ icon: Icon, label, value }) {
   );
 }
 
+function readStorageList(key) {
+  const savedValue = localStorage.getItem(key);
+  return savedValue ? JSON.parse(savedValue) : [];
+}
+
 export default function App() {
   const [query, setQuery] = useState('');
-  const [selectedMember, setSelectedMember] = useState(familyMembers[0]);
+  const [customMembers, setCustomMembers] = useState(() => readStorageList(customMembersStorageKey));
+  const [customGallery, setCustomGallery] = useState(() => readStorageList(customGalleryStorageKey));
+  const [memberForm, setMemberForm] = useState(emptyMemberForm);
+  const [photoForm, setPhotoForm] = useState(emptyPhotoForm);
+  const [adminMessage, setAdminMessage] = useState('');
   const [session, setSession] = useState(() => {
     const savedSession = localStorage.getItem(sessionStorageKey);
     return savedSession ? JSON.parse(savedSession) : null;
@@ -74,9 +108,12 @@ export default function App() {
     email: '',
     password: '',
   });
-  const familyTree = useMemo(() => buildTree(familyMembers), []);
+  const allMembers = useMemo(() => [...familyMembers, ...customMembers], [customMembers]);
+  const allGallery = useMemo(() => [...gallery, ...customGallery], [customGallery]);
+  const [selectedMember, setSelectedMember] = useState(familyMembers[0]);
+  const familyTree = useMemo(() => buildTree(allMembers), [allMembers]);
 
-  const filteredMembers = familyMembers.filter((member) => {
+  const filteredMembers = allMembers.filter((member) => {
     const text = `${member.name} ${member.branch} ${member.origin} ${member.role}`.toLowerCase();
     return text.includes(query.toLowerCase());
   });
@@ -143,6 +180,103 @@ export default function App() {
       ...current,
       [field]: value,
     }));
+  }
+
+  function updateMemberForm(field, value) {
+    setMemberForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  function updatePhotoForm(field, value) {
+    setPhotoForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  function readFileAsDataUrl(file, callback) {
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => callback(String(reader.result));
+    reader.readAsDataURL(file);
+  }
+
+  function addMember(event) {
+    event.preventDefault();
+    setAdminMessage('');
+
+    if (!memberForm.name.trim() || !memberForm.branch.trim()) {
+      setAdminMessage('Agrega al menos nombre y rama familiar.');
+      return;
+    }
+
+    const years = memberForm.deathYear.trim()
+      ? `${memberForm.birthYear.trim() || 'Sin fecha'} - ${memberForm.deathYear.trim()}`
+      : memberForm.birthYear.trim() || 'Sin fecha';
+    const newMember = {
+      id: `persona-${Date.now()}`,
+      name: memberForm.name.trim(),
+      branch: memberForm.branch.trim(),
+      role: memberForm.role.trim() || 'Miembro familiar',
+      years,
+      origin: memberForm.origin.trim() || 'Por documentar',
+      photo: memberForm.photo.trim() || '/assets/family-album-cover.jpg',
+      story: memberForm.story.trim() || 'Historia pendiente de documentar.',
+      parentId: memberForm.parentId || null,
+      custom: true,
+    };
+
+    const nextMembers = [...customMembers, newMember];
+    setCustomMembers(nextMembers);
+    localStorage.setItem(customMembersStorageKey, JSON.stringify(nextMembers));
+    setSelectedMember(newMember);
+    setMemberForm(emptyMemberForm);
+    setAdminMessage('Persona agregada al arbol familiar.');
+  }
+
+  function addPhoto(event) {
+    event.preventDefault();
+    setAdminMessage('');
+
+    if (!photoForm.title.trim() || !photoForm.image.trim()) {
+      setAdminMessage('Agrega titulo y una imagen para guardar la foto.');
+      return;
+    }
+
+    const newPhoto = {
+      id: `foto-${Date.now()}`,
+      title: photoForm.title.trim(),
+      year: photoForm.year.trim() || 'Sin fecha',
+      branch: photoForm.branch.trim() || 'General',
+      image: photoForm.image.trim(),
+      custom: true,
+    };
+
+    const nextGallery = [...customGallery, newPhoto];
+    setCustomGallery(nextGallery);
+    localStorage.setItem(customGalleryStorageKey, JSON.stringify(nextGallery));
+    setPhotoForm(emptyPhotoForm);
+    setAdminMessage('Imagen agregada a la galeria familiar.');
+  }
+
+  function deleteCustomMember(memberId) {
+    const nextMembers = customMembers.filter((member) => member.id !== memberId);
+    setCustomMembers(nextMembers);
+    localStorage.setItem(customMembersStorageKey, JSON.stringify(nextMembers));
+    if (selectedMember.id === memberId) {
+      setSelectedMember(familyMembers[0]);
+    }
+  }
+
+  function deleteCustomPhoto(photoId) {
+    const nextGallery = customGallery.filter((item) => item.id !== photoId);
+    setCustomGallery(nextGallery);
+    localStorage.setItem(customGalleryStorageKey, JSON.stringify(nextGallery));
   }
 
   if (!isUnlocked) {
@@ -230,6 +364,7 @@ export default function App() {
       <header className="hero">
         <nav>
           <a href="#arbol">Arbol</a>
+          <a href="#administrar">Administrar</a>
           <a href="#ramas">Ramas</a>
           <a href="#galeria">Galeria</a>
           <a href="#historias">Historias</a>
@@ -257,10 +392,209 @@ export default function App() {
 
       <section className="dashboard-band">
         <div className="dashboard">
-          <Stat icon={UserRound} label="Personas" value={familyMembers.length} />
+          <Stat icon={UserRound} label="Personas" value={allMembers.length} />
           <Stat icon={GitBranch} label="Ramas" value={branches.length} />
-          <Stat icon={Camera} label="Fotos base" value={gallery.length} />
+          <Stat icon={Camera} label="Fotos" value={allGallery.length} />
           <Stat icon={Shield} label="Supabase" value={isSupabaseConfigured ? 'Listo' : 'Pendiente'} />
+        </div>
+      </section>
+
+      <section className="admin-section" id="administrar">
+        <div className="section-heading">
+          <p className="eyebrow">Administracion familiar</p>
+          <h2>Cargar personas e imagenes</h2>
+        </div>
+        <div className="admin-grid">
+          <form className="admin-panel" onSubmit={addMember}>
+            <div className="panel-title">
+              <UserRound size={20} />
+              <h3>Nueva persona</h3>
+            </div>
+            <label htmlFor="member-name">Nombre completo</label>
+            <input
+              id="member-name"
+              value={memberForm.name}
+              onChange={(event) => updateMemberForm('name', event.target.value)}
+              placeholder="Ej. Jose Gonzalez Vargas"
+            />
+            <div className="form-row">
+              <div>
+                <label htmlFor="member-branch">Rama</label>
+                <input
+                  id="member-branch"
+                  value={memberForm.branch}
+                  onChange={(event) => updateMemberForm('branch', event.target.value)}
+                  placeholder="Gonzalez"
+                />
+              </div>
+              <div>
+                <label htmlFor="member-role">Relacion o rol</label>
+                <input
+                  id="member-role"
+                  value={memberForm.role}
+                  onChange={(event) => updateMemberForm('role', event.target.value)}
+                  placeholder="Abuela, hijo, nieta"
+                />
+              </div>
+            </div>
+            <div className="form-row">
+              <div>
+                <label htmlFor="member-birth">Nacimiento</label>
+                <input
+                  id="member-birth"
+                  value={memberForm.birthYear}
+                  onChange={(event) => updateMemberForm('birthYear', event.target.value)}
+                  placeholder="1940"
+                />
+              </div>
+              <div>
+                <label htmlFor="member-death">Fallecimiento</label>
+                <input
+                  id="member-death"
+                  value={memberForm.deathYear}
+                  onChange={(event) => updateMemberForm('deathYear', event.target.value)}
+                  placeholder="Opcional"
+                />
+              </div>
+            </div>
+            <label htmlFor="member-origin">Lugar de origen</label>
+            <input
+              id="member-origin"
+              value={memberForm.origin}
+              onChange={(event) => updateMemberForm('origin', event.target.value)}
+              placeholder="Ciudad, departamento o pais"
+            />
+            <label htmlFor="member-parent">Conectar debajo de</label>
+            <select
+              id="member-parent"
+              value={memberForm.parentId}
+              onChange={(event) => updateMemberForm('parentId', event.target.value)}
+            >
+              <option value="">Tronco principal</option>
+              {allMembers.map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.name}
+                </option>
+              ))}
+            </select>
+            <label htmlFor="member-photo-url">URL de fotografia</label>
+            <input
+              id="member-photo-url"
+              value={memberForm.photo}
+              onChange={(event) => updateMemberForm('photo', event.target.value)}
+              placeholder="https://..."
+            />
+            <label htmlFor="member-photo-file">O cargar fotografia</label>
+            <input
+              id="member-photo-file"
+              accept="image/*"
+              type="file"
+              onChange={(event) => readFileAsDataUrl(event.target.files?.[0], (value) => updateMemberForm('photo', value))}
+            />
+            <label htmlFor="member-story">Historia o anecdota</label>
+            <textarea
+              id="member-story"
+              value={memberForm.story}
+              onChange={(event) => updateMemberForm('story', event.target.value)}
+              placeholder="Escribe una historia corta, oficio, recuerdo o contexto familiar."
+            />
+            <button type="submit">
+              <Plus size={18} />
+              Agregar persona
+            </button>
+          </form>
+
+          <form className="admin-panel" onSubmit={addPhoto}>
+            <div className="panel-title">
+              <Image size={20} />
+              <h3>Nueva imagen</h3>
+            </div>
+            <label htmlFor="photo-title">Titulo</label>
+            <input
+              id="photo-title"
+              value={photoForm.title}
+              onChange={(event) => updatePhotoForm('title', event.target.value)}
+              placeholder="Boda familiar, graduacion, reunion"
+            />
+            <div className="form-row">
+              <div>
+                <label htmlFor="photo-year">Ano</label>
+                <input
+                  id="photo-year"
+                  value={photoForm.year}
+                  onChange={(event) => updatePhotoForm('year', event.target.value)}
+                  placeholder="1954"
+                />
+              </div>
+              <div>
+                <label htmlFor="photo-branch">Rama</label>
+                <input
+                  id="photo-branch"
+                  value={photoForm.branch}
+                  onChange={(event) => updatePhotoForm('branch', event.target.value)}
+                  placeholder="Gonzalez"
+                />
+              </div>
+            </div>
+            <label htmlFor="photo-url">URL de imagen</label>
+            <input
+              id="photo-url"
+              value={photoForm.image}
+              onChange={(event) => updatePhotoForm('image', event.target.value)}
+              placeholder="https://..."
+            />
+            <label htmlFor="photo-file">O cargar imagen</label>
+            <input
+              id="photo-file"
+              accept="image/*"
+              type="file"
+              onChange={(event) => readFileAsDataUrl(event.target.files?.[0], (value) => updatePhotoForm('image', value))}
+            />
+            {photoForm.image && (
+              <img className="admin-preview" src={photoForm.image} alt="Vista previa" />
+            )}
+            <button type="submit">
+              <Save size={18} />
+              Guardar imagen
+            </button>
+          </form>
+        </div>
+
+        {adminMessage && <strong className="admin-message">{adminMessage}</strong>}
+
+        <div className="admin-lists">
+          <article>
+            <h3>Personas cargadas</h3>
+            {customMembers.length === 0 ? (
+              <p>Aun no hay personas agregadas desde el modulo administrativo.</p>
+            ) : (
+              customMembers.map((member) => (
+                <div className="admin-list-item" key={member.id}>
+                  <img src={member.photo} alt="" />
+                  <span>{member.name}</span>
+                  <button onClick={() => deleteCustomMember(member.id)} title="Eliminar persona" type="button">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))
+            )}
+          </article>
+          <article>
+            <h3>Imagenes cargadas</h3>
+            {customGallery.length === 0 ? (
+              <p>Aun no hay imagenes agregadas desde el modulo administrativo.</p>
+            ) : (
+              customGallery.map((item) => (
+                <div className="admin-list-item" key={item.id}>
+                  <img src={item.image} alt="" />
+                  <span>{item.title}</span>
+                  <button onClick={() => deleteCustomPhoto(item.id)} title="Eliminar imagen" type="button">
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))
+            )}
+          </article>
         </div>
       </section>
 
@@ -347,11 +681,11 @@ export default function App() {
           <h2>Galeria restaurada y documentada</h2>
         </div>
         <div className="gallery-grid">
-          {gallery.map((item) => (
-            <article className="photo-card" key={item.title}>
+          {allGallery.map((item) => (
+            <article className="photo-card" key={item.id || item.title}>
               <img src={item.image} alt={item.title} />
               <div>
-                <span>{item.year} · Rama {item.branch}</span>
+                <span>{item.year} - Rama {item.branch}</span>
                 <h3>{item.title}</h3>
               </div>
             </article>
