@@ -262,6 +262,7 @@ export default function App() {
   const [photoForm, setPhotoForm] = useState(emptyPhotoForm);
   const [adminMessage, setAdminMessage] = useState('');
   const [uploadStatus, setUploadStatus] = useState('');
+  const [editingMemberId, setEditingMemberId] = useState(null);
   const [branchFilter, setBranchFilter] = useState('all');
   const [generationFilter, setGenerationFilter] = useState('all');
   const [session, setSession] = useState(() => {
@@ -448,7 +449,7 @@ export default function App() {
     }
   }
 
-  function addMember(event) {
+  function submitMember(event) {
     event.preventDefault();
     setAdminMessage('');
 
@@ -466,8 +467,8 @@ export default function App() {
     const years = memberForm.deathYear.trim()
       ? `${memberForm.birthYear.trim() || 'Sin fecha'} - ${memberForm.deathYear.trim()}`
       : memberForm.birthYear.trim() || 'Sin fecha';
-    const newMember = {
-      id: `persona-${Date.now()}`,
+    const memberPayload = {
+      id: editingMemberId || `persona-${Date.now()}`,
       name: normalizedName,
       branch: normalizedBranch,
       role: normalizedRole || 'Miembro Familiar',
@@ -481,12 +482,39 @@ export default function App() {
       custom: true,
     };
 
-    const nextMembers = [...customMembers, newMember];
+    const nextMembers = editingMemberId
+      ? customMembers.map((member) => (member.id === editingMemberId ? memberPayload : member))
+      : [...customMembers, memberPayload];
     setCustomMembers(nextMembers);
     localStorage.setItem(customMembersStorageKey, JSON.stringify(nextMembers));
-    setSelectedMember(newMember);
+    setSelectedMember(memberPayload);
     setMemberForm(emptyMemberForm);
-    setAdminMessage('Persona agregada al arbol familiar.');
+    setEditingMemberId(null);
+    setAdminMessage(editingMemberId ? 'Persona actualizada.' : 'Persona agregada al arbol familiar.');
+  }
+
+  function editCustomMember(member) {
+    setEditingMemberId(member.id);
+    setMemberForm({
+      name: member.name || '',
+      branch: member.branch || '',
+      role: member.role || '',
+      nationalId: member.nationalId || '',
+      birthYear: member.years?.includes(' - ') ? member.years.split(' - ')[0] : member.years || '',
+      deathYear: member.years?.includes(' - ') ? member.years.split(' - ')[1] : '',
+      origin: member.origin || '',
+      parentId: member.parentId || '',
+      relationship: member.relationship || '',
+      photo: member.photo || '',
+      story: member.story || '',
+    });
+    setAdminMessage(`Editando a ${member.name}.`);
+  }
+
+  function cancelMemberEdit() {
+    setEditingMemberId(null);
+    setMemberForm(emptyMemberForm);
+    setAdminMessage('');
   }
 
   function addPhoto(event) {
@@ -642,10 +670,10 @@ export default function App() {
             <h2>Personas e imagenes</h2>
           </div>
           <div className="admin-grid">
-            <form className="admin-panel" onSubmit={addMember}>
+            <form className="admin-panel" onSubmit={submitMember}>
               <div className="panel-title">
                 <UserRound size={20} />
-                <h3>Nueva persona</h3>
+                <h3>{editingMemberId ? 'Editar persona' : 'Nueva persona'}</h3>
               </div>
               <label htmlFor="member-name">Nombre completo</label>
               <input
@@ -779,9 +807,15 @@ export default function App() {
                 placeholder="Escribe una historia corta, oficio, recuerdo o contexto familiar."
               />
               <button type="submit">
-                <Plus size={18} />
-                Agregar persona
+                {editingMemberId ? <Save size={18} /> : <Plus size={18} />}
+                {editingMemberId ? 'Guardar cambios' : 'Agregar persona'}
               </button>
+              {editingMemberId && (
+                <button className="secondary-admin-action" onClick={cancelMemberEdit} type="button">
+                  <X size={18} />
+                  Cancelar edicion
+                </button>
+              )}
             </form>
 
             <form className="admin-panel" onSubmit={addPhoto}>
@@ -859,6 +893,9 @@ export default function App() {
                   <div className="admin-list-item" key={member.id}>
                     <img src={member.photo} alt="" />
                     <span>{member.name}</span>
+                    <button onClick={() => editCustomMember(member)} title="Editar persona" type="button">
+                      <Save size={16} />
+                    </button>
                     <button onClick={() => deleteCustomMember(member.id)} title="Eliminar persona" type="button">
                       <Trash2 size={16} />
                     </button>

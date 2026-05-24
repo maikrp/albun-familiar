@@ -871,6 +871,12 @@ nav a {
   font-weight: 800;
 }
 
+.admin-panel .secondary-admin-action {
+  color: #263f3a;
+  background: #fffaf2;
+  border: 1px solid #cfc1ae;
+}
+
 .form-row {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -912,7 +918,7 @@ nav a {
 
 .admin-list-item {
   display: grid;
-  grid-template-columns: 46px minmax(0, 1fr) 36px;
+  grid-template-columns: 46px minmax(0, 1fr) 36px 36px;
   gap: 10px;
   align-items: center;
   padding: 10px 0;

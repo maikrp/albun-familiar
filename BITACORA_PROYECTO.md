@@ -329,6 +329,19 @@ Referencia consultada en `C:\python`:
 - `Apps-Projects/albergues/import_shelters_supabase.py`: conversion a WebP antes de subir a Supabase.
 - `Apps-Projects/busqueda-parques-mascotas/sync_park_images.py`: uso de `.env`, WebP y subida a Storage.
 
+### 16. Edicion de personas cargadas
+
+Se agrego edicion de registros existentes para completar informacion faltante sin duplicar familiares.
+
+Resultado:
+
+- Cada persona cargada en `/admin` tiene boton de editar.
+- El formulario se precarga con los datos existentes.
+- El boton cambia a `Guardar cambios`.
+- Se agrego accion `Cancelar edicion`.
+- Al guardar, se actualiza el registro existente en `localStorage`.
+- El perfil seleccionado se actualiza con los cambios guardados.
+
 ## Verificaciones realizadas
 
 Se ejecuto:
@@ -358,6 +371,7 @@ Resultados:
 - Migracion automatica de registros existentes a nombre propio.
 - Campo de cedula disponible para busqueda e identificacion futura.
 - Supabase Storage preparado con conversion WebP y controles de cuota.
+- Edicion de personas existentes desde el panel administrativo.
 
 URL local de desarrollo:
 
@@ -420,6 +434,7 @@ El repo esta publicado en GitHub y sincronizado con la rama `main`.
 ## Historial de commits
 
 ```text
+Pendiente Agregar edicion de personas cargadas
 6df1d6e Preparar Supabase Storage con WebP
 ddf9360 Agregar campo de cedula familiar
 b13cdd2 Normalizar registros existentes
