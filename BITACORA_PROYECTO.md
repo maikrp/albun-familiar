@@ -230,6 +230,19 @@ Resultado:
 - Se cambiaron las claves de almacenamiento local de personas e imagenes a una nueva version para evitar que registros del prototipo anterior vuelvan a aparecer.
 - El modulo `Administrar` queda como punto de entrada para crear la primera persona, cargar imagenes y construir el arbol propio.
 
+### 9. Separacion del panel administrativo
+
+Se separo el panel administrativo de la pagina principal del album para que la experiencia familiar no parezca una pantalla de mantenimiento.
+
+Resultado:
+
+- El album principal queda en `/`.
+- El panel de gestion queda en `/admin`.
+- Se elimino `Administrar` de la navegacion principal del album.
+- Se agrego un acceso discreto `Gestionar` desde el hero para entrar al panel.
+- Los mensajes vacios del album ahora hablan de panel de gestion, no de una seccion interna.
+- El panel administrativo conserva formularios, listas y acciones de carga/eliminacion.
+
 ## Verificaciones realizadas
 
 Se ejecuto:
@@ -251,6 +264,7 @@ Resultados:
 - Modulo administrativo compilado correctamente.
 - Arbol interactivo con React Flow compilado correctamente.
 - Estado inicial sin personas compilado correctamente.
+- Panel administrativo separado de la pagina principal.
 
 URL local de desarrollo:
 
@@ -275,6 +289,7 @@ Actualmente permite:
 - Consultar perfiles.
 - Consultar expediente documental basico por persona.
 - Empezar desde una base limpia sin familiares ficticios.
+- Administrar datos desde `/admin` sin mezclar formularios en el album.
 - Ver ramas familiares.
 - Ver galeria.
 - Revisar linea de tiempo.
@@ -312,6 +327,7 @@ El repo esta publicado en GitHub y sincronizado con la rama `main`.
 ## Historial de commits
 
 ```text
+Pendiente Separar panel administrativo externo
 feea566 Limpiar datos de ejemplo familiar
 58414b1 Agregar arbol interactivo y filtros familiares
 9f906da Agregar modulo administrativo familiar

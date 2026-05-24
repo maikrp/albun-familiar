@@ -464,12 +464,244 @@ export default function App() {
     );
   }
 
+  if (window.location.pathname === '/admin') {
+    return (
+      <main className="admin-page">
+        <header className="admin-header">
+          <div>
+            <p className="eyebrow">Panel privado</p>
+            <h1>Administracion familiar</h1>
+            <p>Gestiona personas, fotografias y datos base sin mezclar formularios dentro del album.</p>
+          </div>
+          <a className="secondary-link" href="/">
+            <BookOpen size={18} />
+            Ver album
+          </a>
+        </header>
+
+        <section className="dashboard-band">
+          <div className="dashboard">
+            <Stat icon={UserRound} label="Personas" value={allMembers.length} />
+            <Stat icon={GitBranch} label="Ramas" value={dynamicBranches.length} />
+            <Stat icon={Camera} label="Fotos" value={allGallery.length} />
+            <Stat icon={Shield} label="Supabase" value={isSupabaseConfigured ? 'Listo' : 'Pendiente'} />
+          </div>
+        </section>
+
+        <section className="admin-section">
+          <div className="section-heading">
+            <p className="eyebrow">Carga de archivo</p>
+            <h2>Personas e imagenes</h2>
+          </div>
+          <div className="admin-grid">
+            <form className="admin-panel" onSubmit={addMember}>
+              <div className="panel-title">
+                <UserRound size={20} />
+                <h3>Nueva persona</h3>
+              </div>
+              <label htmlFor="member-name">Nombre completo</label>
+              <input
+                id="member-name"
+                value={memberForm.name}
+                onChange={(event) => updateMemberForm('name', event.target.value)}
+                placeholder="Ej. Jose Gonzalez Vargas"
+              />
+              <div className="form-row">
+                <div>
+                  <label htmlFor="member-branch">Rama</label>
+                  <input
+                    id="member-branch"
+                    value={memberForm.branch}
+                    onChange={(event) => updateMemberForm('branch', event.target.value)}
+                    placeholder="Gonzalez"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="member-role">Relacion o rol</label>
+                  <input
+                    id="member-role"
+                    value={memberForm.role}
+                    onChange={(event) => updateMemberForm('role', event.target.value)}
+                    placeholder="Abuela, hijo, nieta"
+                  />
+                </div>
+              </div>
+              <div className="form-row">
+                <div>
+                  <label htmlFor="member-birth">Nacimiento</label>
+                  <input
+                    id="member-birth"
+                    value={memberForm.birthYear}
+                    onChange={(event) => updateMemberForm('birthYear', event.target.value)}
+                    placeholder="1940"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="member-death">Fallecimiento</label>
+                  <input
+                    id="member-death"
+                    value={memberForm.deathYear}
+                    onChange={(event) => updateMemberForm('deathYear', event.target.value)}
+                    placeholder="Opcional"
+                  />
+                </div>
+              </div>
+              <label htmlFor="member-origin">Lugar de origen</label>
+              <input
+                id="member-origin"
+                value={memberForm.origin}
+                onChange={(event) => updateMemberForm('origin', event.target.value)}
+                placeholder="Ciudad, departamento o pais"
+              />
+              <label htmlFor="member-parent">Conectar debajo de</label>
+              <select
+                id="member-parent"
+                value={memberForm.parentId}
+                onChange={(event) => updateMemberForm('parentId', event.target.value)}
+              >
+                <option value="">Tronco principal</option>
+                {allMembers.map((member) => (
+                  <option key={member.id} value={member.id}>
+                    {member.name}
+                  </option>
+                ))}
+              </select>
+              <label htmlFor="member-photo-url">URL de fotografia</label>
+              <input
+                id="member-photo-url"
+                value={memberForm.photo}
+                onChange={(event) => updateMemberForm('photo', event.target.value)}
+                placeholder="https://..."
+              />
+              <label htmlFor="member-photo-file">O cargar fotografia</label>
+              <input
+                id="member-photo-file"
+                accept="image/*"
+                type="file"
+                onChange={(event) => readFileAsDataUrl(event.target.files?.[0], (value) => updateMemberForm('photo', value))}
+              />
+              <label htmlFor="member-story">Historia o anecdota</label>
+              <textarea
+                id="member-story"
+                value={memberForm.story}
+                onChange={(event) => updateMemberForm('story', event.target.value)}
+                placeholder="Escribe una historia corta, oficio, recuerdo o contexto familiar."
+              />
+              <button type="submit">
+                <Plus size={18} />
+                Agregar persona
+              </button>
+            </form>
+
+            <form className="admin-panel" onSubmit={addPhoto}>
+              <div className="panel-title">
+                <Image size={20} />
+                <h3>Nueva imagen</h3>
+              </div>
+              <label htmlFor="photo-title">Titulo</label>
+              <input
+                id="photo-title"
+                value={photoForm.title}
+                onChange={(event) => updatePhotoForm('title', event.target.value)}
+                placeholder="Boda familiar, graduacion, reunion"
+              />
+              <div className="form-row">
+                <div>
+                  <label htmlFor="photo-year">Ano</label>
+                  <input
+                    id="photo-year"
+                    value={photoForm.year}
+                    onChange={(event) => updatePhotoForm('year', event.target.value)}
+                    placeholder="1954"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="photo-branch">Rama</label>
+                  <input
+                    id="photo-branch"
+                    value={photoForm.branch}
+                    onChange={(event) => updatePhotoForm('branch', event.target.value)}
+                    placeholder="Gonzalez"
+                  />
+                </div>
+              </div>
+              <label htmlFor="photo-url">URL de imagen</label>
+              <input
+                id="photo-url"
+                value={photoForm.image}
+                onChange={(event) => updatePhotoForm('image', event.target.value)}
+                placeholder="https://..."
+              />
+              <label htmlFor="photo-file">O cargar imagen</label>
+              <input
+                id="photo-file"
+                accept="image/*"
+                type="file"
+                onChange={(event) => readFileAsDataUrl(event.target.files?.[0], (value) => updatePhotoForm('image', value))}
+              />
+              {photoForm.image && (
+                <img className="admin-preview" src={photoForm.image} alt="Vista previa" />
+              )}
+              <button type="submit">
+                <Save size={18} />
+                Guardar imagen
+              </button>
+            </form>
+          </div>
+
+          {adminMessage && <strong className="admin-message">{adminMessage}</strong>}
+
+          <div className="admin-lists">
+            <article>
+              <h3>Personas cargadas</h3>
+              {customMembers.length === 0 ? (
+                <p>Aun no hay personas agregadas desde el modulo administrativo.</p>
+              ) : (
+                customMembers.map((member) => (
+                  <div className="admin-list-item" key={member.id}>
+                    <img src={member.photo} alt="" />
+                    <span>{member.name}</span>
+                    <button onClick={() => deleteCustomMember(member.id)} title="Eliminar persona" type="button">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </article>
+            <article>
+              <h3>Imagenes cargadas</h3>
+              {customGallery.length === 0 ? (
+                <p>Aun no hay imagenes agregadas desde el modulo administrativo.</p>
+              ) : (
+                customGallery.map((item) => (
+                  <div className="admin-list-item" key={item.id}>
+                    <img src={item.image} alt="" />
+                    <span>{item.title}</span>
+                    <button onClick={() => deleteCustomPhoto(item.id)} title="Eliminar imagen" type="button">
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </article>
+          </div>
+        </section>
+
+        <button className="floating-close" onClick={() => {
+          localStorage.removeItem(sessionStorageKey);
+          setSession(null);
+        }} title="Cerrar sesion" type="button">
+          <X size={18} />
+        </button>
+      </main>
+    );
+  }
+
   return (
     <main>
       <header className="hero">
         <nav>
           <a href="#arbol">Arbol</a>
-          <a href="#administrar">Administrar</a>
           <a href="#ramas">Ramas</a>
           <a href="#galeria">Galeria</a>
           <a href="#historias">Historias</a>
@@ -491,6 +723,10 @@ export default function App() {
               <Camera size={18} />
               Abrir album
             </a>
+            <a className="secondary-link" href="/admin">
+              <Shield size={18} />
+              Gestionar
+            </a>
           </div>
         </div>
       </header>
@@ -501,205 +737,6 @@ export default function App() {
           <Stat icon={GitBranch} label="Ramas" value={dynamicBranches.length} />
           <Stat icon={Camera} label="Fotos" value={allGallery.length} />
           <Stat icon={Shield} label="Supabase" value={isSupabaseConfigured ? 'Listo' : 'Pendiente'} />
-        </div>
-      </section>
-
-      <section className="admin-section" id="administrar">
-        <div className="section-heading">
-          <p className="eyebrow">Administracion familiar</p>
-          <h2>Cargar personas e imagenes</h2>
-        </div>
-        <div className="admin-grid">
-          <form className="admin-panel" onSubmit={addMember}>
-            <div className="panel-title">
-              <UserRound size={20} />
-              <h3>Nueva persona</h3>
-            </div>
-            <label htmlFor="member-name">Nombre completo</label>
-            <input
-              id="member-name"
-              value={memberForm.name}
-              onChange={(event) => updateMemberForm('name', event.target.value)}
-              placeholder="Ej. Jose Gonzalez Vargas"
-            />
-            <div className="form-row">
-              <div>
-                <label htmlFor="member-branch">Rama</label>
-                <input
-                  id="member-branch"
-                  value={memberForm.branch}
-                  onChange={(event) => updateMemberForm('branch', event.target.value)}
-                  placeholder="Gonzalez"
-                />
-              </div>
-              <div>
-                <label htmlFor="member-role">Relacion o rol</label>
-                <input
-                  id="member-role"
-                  value={memberForm.role}
-                  onChange={(event) => updateMemberForm('role', event.target.value)}
-                  placeholder="Abuela, hijo, nieta"
-                />
-              </div>
-            </div>
-            <div className="form-row">
-              <div>
-                <label htmlFor="member-birth">Nacimiento</label>
-                <input
-                  id="member-birth"
-                  value={memberForm.birthYear}
-                  onChange={(event) => updateMemberForm('birthYear', event.target.value)}
-                  placeholder="1940"
-                />
-              </div>
-              <div>
-                <label htmlFor="member-death">Fallecimiento</label>
-                <input
-                  id="member-death"
-                  value={memberForm.deathYear}
-                  onChange={(event) => updateMemberForm('deathYear', event.target.value)}
-                  placeholder="Opcional"
-                />
-              </div>
-            </div>
-            <label htmlFor="member-origin">Lugar de origen</label>
-            <input
-              id="member-origin"
-              value={memberForm.origin}
-              onChange={(event) => updateMemberForm('origin', event.target.value)}
-              placeholder="Ciudad, departamento o pais"
-            />
-            <label htmlFor="member-parent">Conectar debajo de</label>
-            <select
-              id="member-parent"
-              value={memberForm.parentId}
-              onChange={(event) => updateMemberForm('parentId', event.target.value)}
-            >
-              <option value="">Tronco principal</option>
-              {allMembers.map((member) => (
-                <option key={member.id} value={member.id}>
-                  {member.name}
-                </option>
-              ))}
-            </select>
-            <label htmlFor="member-photo-url">URL de fotografia</label>
-            <input
-              id="member-photo-url"
-              value={memberForm.photo}
-              onChange={(event) => updateMemberForm('photo', event.target.value)}
-              placeholder="https://..."
-            />
-            <label htmlFor="member-photo-file">O cargar fotografia</label>
-            <input
-              id="member-photo-file"
-              accept="image/*"
-              type="file"
-              onChange={(event) => readFileAsDataUrl(event.target.files?.[0], (value) => updateMemberForm('photo', value))}
-            />
-            <label htmlFor="member-story">Historia o anecdota</label>
-            <textarea
-              id="member-story"
-              value={memberForm.story}
-              onChange={(event) => updateMemberForm('story', event.target.value)}
-              placeholder="Escribe una historia corta, oficio, recuerdo o contexto familiar."
-            />
-            <button type="submit">
-              <Plus size={18} />
-              Agregar persona
-            </button>
-          </form>
-
-          <form className="admin-panel" onSubmit={addPhoto}>
-            <div className="panel-title">
-              <Image size={20} />
-              <h3>Nueva imagen</h3>
-            </div>
-            <label htmlFor="photo-title">Titulo</label>
-            <input
-              id="photo-title"
-              value={photoForm.title}
-              onChange={(event) => updatePhotoForm('title', event.target.value)}
-              placeholder="Boda familiar, graduacion, reunion"
-            />
-            <div className="form-row">
-              <div>
-                <label htmlFor="photo-year">Ano</label>
-                <input
-                  id="photo-year"
-                  value={photoForm.year}
-                  onChange={(event) => updatePhotoForm('year', event.target.value)}
-                  placeholder="1954"
-                />
-              </div>
-              <div>
-                <label htmlFor="photo-branch">Rama</label>
-                <input
-                  id="photo-branch"
-                  value={photoForm.branch}
-                  onChange={(event) => updatePhotoForm('branch', event.target.value)}
-                  placeholder="Gonzalez"
-                />
-              </div>
-            </div>
-            <label htmlFor="photo-url">URL de imagen</label>
-            <input
-              id="photo-url"
-              value={photoForm.image}
-              onChange={(event) => updatePhotoForm('image', event.target.value)}
-              placeholder="https://..."
-            />
-            <label htmlFor="photo-file">O cargar imagen</label>
-            <input
-              id="photo-file"
-              accept="image/*"
-              type="file"
-              onChange={(event) => readFileAsDataUrl(event.target.files?.[0], (value) => updatePhotoForm('image', value))}
-            />
-            {photoForm.image && (
-              <img className="admin-preview" src={photoForm.image} alt="Vista previa" />
-            )}
-            <button type="submit">
-              <Save size={18} />
-              Guardar imagen
-            </button>
-          </form>
-        </div>
-
-        {adminMessage && <strong className="admin-message">{adminMessage}</strong>}
-
-        <div className="admin-lists">
-          <article>
-            <h3>Personas cargadas</h3>
-            {customMembers.length === 0 ? (
-              <p>Aun no hay personas agregadas desde el modulo administrativo.</p>
-            ) : (
-              customMembers.map((member) => (
-                <div className="admin-list-item" key={member.id}>
-                  <img src={member.photo} alt="" />
-                  <span>{member.name}</span>
-                  <button onClick={() => deleteCustomMember(member.id)} title="Eliminar persona" type="button">
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              ))
-            )}
-          </article>
-          <article>
-            <h3>Imagenes cargadas</h3>
-            {customGallery.length === 0 ? (
-              <p>Aun no hay imagenes agregadas desde el modulo administrativo.</p>
-            ) : (
-              customGallery.map((item) => (
-                <div className="admin-list-item" key={item.id}>
-                  <img src={item.image} alt="" />
-                  <span>{item.title}</span>
-                  <button onClick={() => deleteCustomPhoto(item.id)} title="Eliminar imagen" type="button">
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              ))
-            )}
-          </article>
         </div>
       </section>
 
@@ -784,7 +821,7 @@ export default function App() {
             </ReactFlow>
           ) : (
             <div className="empty-flow">
-              Todavia no hay personas en el arbol. Crea la primera desde Administrar.
+              Todavia no hay personas en el arbol. Crea la primera desde el panel de gestion.
             </div>
           )}
         </div>
@@ -867,7 +904,7 @@ export default function App() {
           {dynamicBranches.length === 0 ? (
             <article className="empty-card">
               <h3>Sin ramas creadas</h3>
-              <p>Agrega una persona desde Administrar y escribe su rama familiar para empezar.</p>
+              <p>Agrega una persona desde el panel de gestion y escribe su rama familiar para empezar.</p>
             </article>
           ) : dynamicBranches.map((branch) => (
             <article
@@ -895,7 +932,7 @@ export default function App() {
           {allGallery.length === 0 ? (
             <article className="empty-card">
               <h3>Sin imagenes cargadas</h3>
-              <p>Sube la primera fotografia familiar desde Administrar.</p>
+              <p>Sube la primera fotografia familiar desde el panel de gestion.</p>
             </article>
           ) : allGallery.map((item) => (
             <article className="photo-card" key={item.id || item.title}>
