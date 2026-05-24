@@ -51,7 +51,7 @@ img {
   padding: 24px;
   background:
     linear-gradient(rgba(18, 24, 28, 0.35), rgba(18, 24, 28, 0.35)),
-    url("https://images.unsplash.com/photo-1499364615650-ec38552f4f34?auto=format&fit=crop&w=1800&q=80")
+    url("/assets/family-album-cover.jpg")
       center / cover;
 }
 
@@ -158,8 +158,8 @@ img {
   padding: 24px clamp(18px, 5vw, 72px) 46px;
   color: #fffaf2;
   background:
-    linear-gradient(90deg, rgba(20, 21, 18, 0.78), rgba(20, 21, 18, 0.34)),
-    url("https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=2000&q=80")
+    linear-gradient(90deg, rgba(20, 21, 18, 0.82), rgba(20, 21, 18, 0.28)),
+    url("/assets/hero-family-1911.jpg")
       center / cover;
 }
 

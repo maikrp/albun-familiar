@@ -77,25 +77,25 @@ export const branches = [
   {
     name: 'Rama Gonzalez',
     summary: 'Tronco principal, oficio agricultor, comercio y primeras reuniones documentadas.',
-    cover: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=900&q=80',
+    cover: '/assets/hero-family-1911.jpg',
     count: 42,
   },
   {
     name: 'Rama Vargas',
     summary: 'Cartas antiguas, recetas familiares y fotografias conservadas por generaciones.',
-    cover: 'https://images.unsplash.com/photo-1511895426328-dc8714191300?auto=format&fit=crop&w=900&q=80',
+    cover: '/assets/family-album-cover.jpg',
     count: 31,
   },
   {
     name: 'Rama Mora',
     summary: 'Graduaciones, matrimonios y migraciones recientes documentadas en video y audio.',
-    cover: 'https://images.unsplash.com/photo-1609220136736-443140cffec6?auto=format&fit=crop&w=900&q=80',
+    cover: '/assets/four-generations.jpg',
     count: 26,
   },
   {
     name: 'Rama Chaves',
     summary: 'Album contemporaneo, entrevistas y testimonios de nuevas generaciones.',
-    cover: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=900&q=80',
+    cover: '/assets/vintage-photographs.jpg',
     count: 18,
   },
 ];
@@ -138,25 +138,25 @@ export const gallery = [
     title: 'Boda familiar',
     year: '1954',
     branch: 'Gonzalez',
-    image: 'https://images.unsplash.com/photo-1523438885200-e635ba2c371e?auto=format&fit=crop&w=900&q=80',
+    image: '/assets/hero-family-1911.jpg',
   },
   {
     title: 'Retrato de generaciones',
     year: '1978',
     branch: 'Vargas',
-    image: 'https://images.unsplash.com/photo-1591604466107-ec97de577aff?auto=format&fit=crop&w=900&q=80',
+    image: '/assets/four-generations.jpg',
   },
   {
     title: 'Reunion de primos',
     year: '2001',
     branch: 'Mora',
-    image: 'https://images.unsplash.com/photo-1529634597503-139d3726fed5?auto=format&fit=crop&w=900&q=80',
+    image: '/assets/family-album-cover.jpg',
   },
   {
     title: 'Archivo restaurado',
     year: '2026',
     branch: 'Chaves',
-    image: 'https://images.unsplash.com/photo-1518152006812-edab29b069ac?auto=format&fit=crop&w=900&q=80',
+    image: '/assets/vintage-photographs.jpg',
   },
 ];
 
