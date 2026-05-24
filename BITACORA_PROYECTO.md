@@ -420,7 +420,7 @@ El repo esta publicado en GitHub y sincronizado con la rama `main`.
 ## Historial de commits
 
 ```text
-Pendiente Preparar Supabase Storage con WebP
+6df1d6e Preparar Supabase Storage con WebP
 ddf9360 Agregar campo de cedula familiar
 b13cdd2 Normalizar registros existentes
 4aee52e Reforzar lineas de descendencia
