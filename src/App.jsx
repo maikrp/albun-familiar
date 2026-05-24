@@ -157,6 +157,26 @@ function readStorageList(key) {
   return savedValue ? JSON.parse(savedValue) : [];
 }
 
+function toProperName(value) {
+  const lowerParticles = new Set(['de', 'del', 'la', 'las', 'los', 'y', 'e']);
+  return value
+    .trim()
+    .toLocaleLowerCase('es')
+    .replace(/\s+/g, ' ')
+    .split(' ')
+    .map((word, index) => {
+      if (index > 0 && lowerParticles.has(word)) {
+        return word;
+      }
+
+      return word
+        .split('-')
+        .map((part) => part.charAt(0).toLocaleUpperCase('es') + part.slice(1))
+        .join('-');
+    })
+    .join(' ');
+}
+
 export default function App() {
   const [query, setQuery] = useState('');
   const [customMembers, setCustomMembers] = useState(() => readStorageList(customMembersStorageKey));
@@ -315,7 +335,12 @@ export default function App() {
     event.preventDefault();
     setAdminMessage('');
 
-    if (!memberForm.name.trim() || !memberForm.branch.trim()) {
+    const normalizedName = toProperName(memberForm.name);
+    const normalizedBranch = toProperName(memberForm.branch);
+    const normalizedRole = toProperName(memberForm.role);
+    const normalizedOrigin = toProperName(memberForm.origin);
+
+    if (!normalizedName || !normalizedBranch) {
       setAdminMessage('Agrega al menos nombre y rama familiar.');
       return;
     }
@@ -325,11 +350,11 @@ export default function App() {
       : memberForm.birthYear.trim() || 'Sin fecha';
     const newMember = {
       id: `persona-${Date.now()}`,
-      name: memberForm.name.trim(),
-      branch: memberForm.branch.trim(),
-      role: memberForm.role.trim() || 'Miembro familiar',
+      name: normalizedName,
+      branch: normalizedBranch,
+      role: normalizedRole || 'Miembro Familiar',
       years,
-      origin: memberForm.origin.trim() || 'Por documentar',
+      origin: normalizedOrigin || 'Por Documentar',
       photo: memberForm.photo.trim() || '/assets/family-album-cover.jpg',
       story: memberForm.story.trim() || 'Historia pendiente de documentar.',
       parentId: memberForm.parentId || null,
@@ -348,16 +373,19 @@ export default function App() {
     event.preventDefault();
     setAdminMessage('');
 
-    if (!photoForm.title.trim() || !photoForm.image.trim()) {
+    const normalizedTitle = toProperName(photoForm.title);
+    const normalizedBranch = toProperName(photoForm.branch);
+
+    if (!normalizedTitle || !photoForm.image.trim()) {
       setAdminMessage('Agrega titulo y una imagen para guardar la foto.');
       return;
     }
 
     const newPhoto = {
       id: `foto-${Date.now()}`,
-      title: photoForm.title.trim(),
+      title: normalizedTitle,
       year: photoForm.year.trim() || 'Sin fecha',
-      branch: photoForm.branch.trim() || 'General',
+      branch: normalizedBranch || 'General',
       image: photoForm.image.trim(),
       custom: true,
     };
@@ -504,6 +532,7 @@ export default function App() {
                 id="member-name"
                 value={memberForm.name}
                 onChange={(event) => updateMemberForm('name', event.target.value)}
+                onBlur={(event) => updateMemberForm('name', toProperName(event.target.value))}
                 placeholder="Ej. Jose Gonzalez Vargas"
               />
               <div className="form-row">
@@ -513,6 +542,7 @@ export default function App() {
                     id="member-branch"
                     value={memberForm.branch}
                     onChange={(event) => updateMemberForm('branch', event.target.value)}
+                    onBlur={(event) => updateMemberForm('branch', toProperName(event.target.value))}
                     placeholder="Gonzalez"
                   />
                 </div>
@@ -522,6 +552,7 @@ export default function App() {
                     id="member-role"
                     value={memberForm.role}
                     onChange={(event) => updateMemberForm('role', event.target.value)}
+                    onBlur={(event) => updateMemberForm('role', toProperName(event.target.value))}
                     placeholder="Abuela, hijo, nieta"
                   />
                 </div>
@@ -551,6 +582,7 @@ export default function App() {
                 id="member-origin"
                 value={memberForm.origin}
                 onChange={(event) => updateMemberForm('origin', event.target.value)}
+                onBlur={(event) => updateMemberForm('origin', toProperName(event.target.value))}
                 placeholder="Ciudad, departamento o pais"
               />
               <label htmlFor="member-parent">Conectar debajo de</label>
@@ -603,6 +635,7 @@ export default function App() {
                 id="photo-title"
                 value={photoForm.title}
                 onChange={(event) => updatePhotoForm('title', event.target.value)}
+                onBlur={(event) => updatePhotoForm('title', toProperName(event.target.value))}
                 placeholder="Boda familiar, graduacion, reunion"
               />
               <div className="form-row">
@@ -621,6 +654,7 @@ export default function App() {
                     id="photo-branch"
                     value={photoForm.branch}
                     onChange={(event) => updatePhotoForm('branch', event.target.value)}
+                    onBlur={(event) => updatePhotoForm('branch', toProperName(event.target.value))}
                     placeholder="Gonzalez"
                   />
                 </div>

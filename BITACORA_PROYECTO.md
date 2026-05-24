@@ -243,6 +243,20 @@ Resultado:
 - Los mensajes vacios del album ahora hablan de panel de gestion, no de una seccion interna.
 - El panel administrativo conserva formularios, listas y acciones de carga/eliminacion.
 
+### 10. Normalizacion de nombres y correccion de estado vacio
+
+Se corrigio el flujo de captura para que los datos escritos en mayusculas se guarden como nombre propio.
+
+Resultado:
+
+- Nombre completo se normaliza al salir del campo y al guardar.
+- Rama familiar se normaliza al salir del campo y al guardar.
+- Relacion o rol se normaliza al salir del campo y al guardar.
+- Lugar de origen se normaliza al salir del campo y al guardar.
+- Titulo de imagen y rama de imagen tambien se normalizan.
+- Se mantiene en minuscula conectores comunes como `de`, `del`, `la`, `las`, `los` y `y` cuando no son la primera palabra.
+- Se verifico que la pantalla no reporte errores de consola al abrir `/admin` sin personas cargadas.
+
 ## Verificaciones realizadas
 
 Se ejecuto:
@@ -265,6 +279,8 @@ Resultados:
 - Arbol interactivo con React Flow compilado correctamente.
 - Estado inicial sin personas compilado correctamente.
 - Panel administrativo separado de la pagina principal.
+- Normalizacion automatica a nombre propio en el panel administrativo.
+- Correccion de error por perfil sin persona seleccionada.
 
 URL local de desarrollo:
 
@@ -327,6 +343,7 @@ El repo esta publicado en GitHub y sincronizado con la rama `main`.
 ## Historial de commits
 
 ```text
+Pendiente Normalizar nombres y corregir estado vacio
 c8d2db3 Separar panel administrativo del album
 feea566 Limpiar datos de ejemplo familiar
 58414b1 Agregar arbol interactivo y filtros familiares
