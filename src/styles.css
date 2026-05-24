@@ -405,9 +405,11 @@ nav a {
 
 .flow-shell .react-flow__node {
   width: 168px;
+  height: 170px;
   border: 2px solid #d9cfbf;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.94);
+  box-sizing: border-box;
 }
 
 .flow-shell .react-flow__edge-path {
@@ -425,10 +427,13 @@ nav a {
 }
 
 .flow-member {
-  display: grid;
-  justify-items: center;
-  gap: 7px;
-  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 12px 6px;
   text-align: center;
 }
 

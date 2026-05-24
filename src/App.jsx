@@ -231,13 +231,14 @@ function createFlowElements(members, filters, selectedMemberId) {
     if (childXs.length > 0) {
       x = childXs.reduce((total, value) => total + value, 0) / childXs.length;
     } else {
-      x = nextLeaf++ * 280;
+      x = nextLeaf++ * 380; // slightly wider to avoid overlaps between couples
     }
 
-    positions.set(member.id, { x, y: depth * 310 });
-
     if (partner) {
-      positions.set(partner.id, { x: x + 160, y: depth * 310 });
+      positions.set(member.id, { x: x - 130, y: depth * 310 });
+      positions.set(partner.id, { x: x + 130, y: depth * 310 });
+    } else {
+      positions.set(member.id, { x, y: depth * 310 });
     }
 
     return x;
