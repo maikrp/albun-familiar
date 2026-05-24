@@ -19,7 +19,8 @@ import {
 import { archiveSteps, branches, familyMembers, gallery, timeline } from './data/familyData.js';
 import { isSupabaseConfigured } from './lib/supabase.js';
 
-const password = import.meta.env.VITE_FAMILY_PASSWORD || 'familia';
+const usersStorageKey = 'family-users';
+const sessionStorageKey = 'family-session';
 
 function buildTree(members, parentId = null) {
   return members
@@ -62,8 +63,17 @@ function Stat({ icon: Icon, label, value }) {
 export default function App() {
   const [query, setQuery] = useState('');
   const [selectedMember, setSelectedMember] = useState(familyMembers[0]);
-  const [isUnlocked, setIsUnlocked] = useState(() => localStorage.getItem('family-access') === 'ok');
-  const [passwordInput, setPasswordInput] = useState('');
+  const [session, setSession] = useState(() => {
+    const savedSession = localStorage.getItem(sessionStorageKey);
+    return savedSession ? JSON.parse(savedSession) : null;
+  });
+  const [authMode, setAuthMode] = useState('register');
+  const [authMessage, setAuthMessage] = useState('');
+  const [authForm, setAuthForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+  });
   const familyTree = useMemo(() => buildTree(familyMembers), []);
 
   const filteredMembers = familyMembers.filter((member) => {
@@ -71,12 +81,68 @@ export default function App() {
     return text.includes(query.toLowerCase());
   });
 
-  function unlock(event) {
+  const isUnlocked = Boolean(session);
+
+  function getUsers() {
+    const savedUsers = localStorage.getItem(usersStorageKey);
+    return savedUsers ? JSON.parse(savedUsers) : [];
+  }
+
+  function saveSession(user) {
+    const cleanUser = { name: user.name, email: user.email };
+    localStorage.setItem(sessionStorageKey, JSON.stringify(cleanUser));
+    setSession(cleanUser);
+  }
+
+  function handleAuth(event) {
     event.preventDefault();
-    if (passwordInput.trim() === password) {
-      localStorage.setItem('family-access', 'ok');
-      setIsUnlocked(true);
+    setAuthMessage('');
+
+    const name = authForm.name.trim();
+    const email = authForm.email.trim().toLowerCase();
+    const formPassword = authForm.password.trim();
+    const users = getUsers();
+
+    if (!email || !formPassword || (authMode === 'register' && !name)) {
+      setAuthMessage('Completa los campos para continuar.');
+      return;
     }
+
+    if (authMode === 'register') {
+      if (users.some((user) => user.email === email)) {
+        setAuthMessage('Ese correo ya tiene una cuenta. Usa iniciar sesion.');
+        return;
+      }
+
+      const newUser = {
+        name,
+        email,
+        password: formPassword,
+        createdAt: new Date().toISOString(),
+      };
+      const nextUsers = [...users, newUser];
+      localStorage.setItem(usersStorageKey, JSON.stringify(nextUsers));
+      saveSession(newUser);
+      return;
+    }
+
+    const existingUser = users.find(
+      (user) => user.email === email && user.password === formPassword,
+    );
+
+    if (!existingUser) {
+      setAuthMessage('No encontre una cuenta con esos datos.');
+      return;
+    }
+
+    saveSession(existingUser);
+  }
+
+  function updateAuthForm(field, value) {
+    setAuthForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
   }
 
   if (!isUnlocked) {
@@ -88,21 +154,70 @@ export default function App() {
           </div>
           <p>Archivo privado familiar</p>
           <h1>Albun Familiar</h1>
-          <form onSubmit={unlock}>
-            <label htmlFor="family-password">Contrasena de acceso</label>
+          <div className="auth-tabs" role="tablist" aria-label="Acceso familiar">
+            <button
+              className={authMode === 'register' ? 'active' : ''}
+              onClick={() => {
+                setAuthMode('register');
+                setAuthMessage('');
+              }}
+              type="button"
+            >
+              Crear cuenta
+            </button>
+            <button
+              className={authMode === 'login' ? 'active' : ''}
+              onClick={() => {
+                setAuthMode('login');
+                setAuthMessage('');
+              }}
+              type="button"
+            >
+              Iniciar sesion
+            </button>
+          </div>
+          <form onSubmit={handleAuth}>
+            {authMode === 'register' && (
+              <>
+                <label htmlFor="family-name">Nombre familiar</label>
+                <div className="password-row">
+                  <UserRound size={18} />
+                  <input
+                    id="family-name"
+                    type="text"
+                    value={authForm.name}
+                    onChange={(event) => updateAuthForm('name', event.target.value)}
+                    placeholder="Ej. Maria Gonzalez"
+                  />
+                </div>
+              </>
+            )}
+            <label htmlFor="family-email">Correo</label>
+            <div className="password-row">
+              <UserRound size={18} />
+              <input
+                id="family-email"
+                type="email"
+                value={authForm.email}
+                onChange={(event) => updateAuthForm('email', event.target.value)}
+                placeholder="familia@ejemplo.com"
+              />
+            </div>
+            <label htmlFor="family-password">Clave</label>
             <div className="password-row">
               <Lock size={18} />
               <input
                 id="family-password"
                 type="password"
-                value={passwordInput}
-                onChange={(event) => setPasswordInput(event.target.value)}
-                placeholder="familia"
+                value={authForm.password}
+                onChange={(event) => updateAuthForm('password', event.target.value)}
+                placeholder="Crea una clave privada"
               />
             </div>
+            {authMessage && <strong className="auth-message">{authMessage}</strong>}
             <button type="submit">
               <Shield size={18} />
-              Entrar al album
+              {authMode === 'register' ? 'Crear y entrar' : 'Entrar al album'}
             </button>
           </form>
         </section>
@@ -304,13 +419,13 @@ export default function App() {
         </span>
         <span>
           <Sparkles size={16} />
-          Archivo privado en crecimiento
+          {session?.name || 'Archivo privado en crecimiento'}
         </span>
       </footer>
 
       <button className="floating-close" onClick={() => {
-        localStorage.removeItem('family-access');
-        setIsUnlocked(false);
+        localStorage.removeItem(sessionStorageKey);
+        setSession(null);
       }} title="Cerrar sesion" type="button">
         <X size={18} />
       </button>
