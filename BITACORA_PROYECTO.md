@@ -342,6 +342,25 @@ Resultado:
 - Al guardar, se actualiza el registro existente en `localStorage`.
 - El perfil seleccionado se actualiza con los cambios guardados.
 
+### 17. Esquema de base de datos Supabase
+
+Se verifico Supabase por REST usando las claves guardadas localmente fuera del repositorio.
+
+Resultado:
+
+- Las tablas `familiares`, `fotos`, `historias`, `documentos` y `eventos_familiares` no existian.
+- Se creo el bucket `family-media` desde Storage API.
+- Se agrego migracion SQL en `supabase/migrations/20260524142000_family_schema.sql`.
+- Se agrego `supabase/README.md`.
+- La migracion incluye campos actuales y futuros: cedula, rama, vinculo, padre, madre, pareja, foto principal, storage paths, ubicacion, metadata, historias, documentos, fotos y eventos.
+- Se agregaron indices para cedula, rama y relaciones familiares.
+- Se agregaron triggers `updated_at`.
+- Se agregaron politicas RLS iniciales para usuarios autenticados.
+
+Nota:
+
+La API REST de Supabase no permite crear tablas directamente. Para aplicar la migracion se debe ejecutar el SQL desde Supabase SQL Editor, Supabase CLI o una conexion directa a Postgres.
+
 ## Verificaciones realizadas
 
 Se ejecuto:
@@ -372,6 +391,7 @@ Resultados:
 - Campo de cedula disponible para busqueda e identificacion futura.
 - Supabase Storage preparado con conversion WebP y controles de cuota.
 - Edicion de personas existentes desde el panel administrativo.
+- Migracion SQL de Supabase creada para todos los campos del modelo familiar.
 
 URL local de desarrollo:
 
@@ -434,6 +454,7 @@ El repo esta publicado en GitHub y sincronizado con la rama `main`.
 ## Historial de commits
 
 ```text
+Pendiente Agregar esquema Supabase de familia
 0b4a4ba Agregar edicion de personas
 6df1d6e Preparar Supabase Storage con WebP
 ddf9360 Agregar campo de cedula familiar

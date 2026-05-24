@@ -53,3 +53,21 @@ La app convierte imagenes a WebP antes de subirlas:
 - `upsert: false` para evitar sobrescrituras accidentales.
 
 Esto ayuda a evitar saturacion de Storage y consumo innecesario de ancho de banda.
+
+## Base de datos
+
+La migracion SQL esta en:
+
+```text
+supabase/migrations/20260524142000_family_schema.sql
+```
+
+Incluye tablas para:
+
+- familiares
+- fotos
+- historias
+- documentos
+- eventos familiares
+
+Ejecutala desde el SQL Editor de Supabase o con Supabase CLI cuando tengas el proyecto vinculado.
