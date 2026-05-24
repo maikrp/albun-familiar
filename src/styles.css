@@ -191,7 +191,7 @@ img {
   color: #fffaf2;
   background:
     linear-gradient(90deg, rgba(20, 21, 18, 0.82), rgba(20, 21, 18, 0.28)),
-    url("/assets/hero-family-1911.jpg")
+    url("/assets/custom-hero-bg.png")
       center / cover;
 }
 
