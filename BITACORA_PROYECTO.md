@@ -294,6 +294,18 @@ Resultado:
 - Las imagenes existentes tambien normalizan titulo y rama.
 - Esto evita que registros previos como nombres escritos en mayusculas sigan apareciendo sin formato de nombre propio.
 
+### 14. Campo de cedula para identificacion futura
+
+Se agrego un campo de cedula a los registros familiares para facilitar busquedas, cruces y asistencia futura con IA.
+
+Resultado:
+
+- El formulario administrativo permite capturar `Numero de cedula`.
+- La cedula se guarda en cada persona.
+- La cedula aparece en el perfil documental.
+- La busqueda del arbol tambien encuentra personas por cedula.
+- El dato se conserva en el formato digitado para respetar guiones o formatos oficiales.
+
 ## Verificaciones realizadas
 
 Se ejecuto:
@@ -321,6 +333,7 @@ Resultados:
 - Lineas genealogicas mas visibles con etiqueta de vinculo.
 - Refuerzo visual de descendencia entre tarjetas.
 - Migracion automatica de registros existentes a nombre propio.
+- Campo de cedula disponible para busqueda e identificacion futura.
 
 URL local de desarrollo:
 
@@ -383,6 +396,7 @@ El repo esta publicado en GitHub y sincronizado con la rama `main`.
 ## Historial de commits
 
 ```text
+Pendiente Agregar campo de cedula familiar
 b13cdd2 Normalizar registros existentes
 4aee52e Reforzar lineas de descendencia
 668245a Mejorar conexiones y vinculos genealogicos

@@ -41,6 +41,7 @@ const emptyMemberForm = {
   name: '',
   branch: '',
   role: '',
+  nationalId: '',
   birthYear: '',
   deathYear: '',
   origin: '',
@@ -89,7 +90,7 @@ function createFlowElements(members, filters, selectedMemberId) {
   const generationCache = new Map();
   const visibleMembers = members.filter((member) => {
     const generation = getMemberGeneration(member, members, generationCache);
-    const haystack = `${member.name} ${member.branch} ${member.origin} ${member.role} ${member.relationship || ''}`.toLowerCase();
+    const haystack = `${member.name} ${member.nationalId || ''} ${member.branch} ${member.origin} ${member.role} ${member.relationship || ''}`.toLowerCase();
     const matchesSearch = haystack.includes(filters.query.toLowerCase());
     const matchesBranch = filters.branch === 'all' || member.branch === filters.branch;
     const matchesGeneration = filters.generation === 'all' || String(generation) === filters.generation;
@@ -213,6 +214,7 @@ function normalizeMember(member) {
     name: toProperName(member.name || ''),
     branch: toProperName(member.branch || ''),
     role: toProperName(member.role || ''),
+    nationalId: member.nationalId || '',
     relationship: toProperName(member.relationship || ''),
     origin: toProperName(member.origin || ''),
   };
@@ -290,7 +292,7 @@ export default function App() {
   );
 
   const filteredMembers = allMembers.filter((member) => {
-    const text = `${member.name} ${member.branch} ${member.origin} ${member.role}`.toLowerCase();
+    const text = `${member.name} ${member.nationalId || ''} ${member.branch} ${member.origin} ${member.role}`.toLowerCase();
     return text.includes(query.toLowerCase());
   });
   const selectedChildren = selectedMember
@@ -412,6 +414,7 @@ export default function App() {
       name: normalizedName,
       branch: normalizedBranch,
       role: normalizedRole || 'Miembro Familiar',
+      nationalId: memberForm.nationalId.trim(),
       relationship: memberForm.parentId ? normalizedRelationship || 'Descendiente' : 'Persona Inicial',
       years,
       origin: normalizedOrigin || 'Por Documentar',
@@ -617,6 +620,13 @@ export default function App() {
                   />
                 </div>
               </div>
+              <label htmlFor="member-national-id">Numero de cedula</label>
+              <input
+                id="member-national-id"
+                value={memberForm.nationalId}
+                onChange={(event) => updateMemberForm('nationalId', event.target.value)}
+                placeholder="Ej. 1-0234-0567"
+              />
               <div className="form-row">
                 <div>
                   <label htmlFor="member-birth">Nacimiento</label>
@@ -967,6 +977,10 @@ export default function App() {
                   <div>
                     <dt>Origen</dt>
                     <dd>{selectedMember.origin}</dd>
+                  </div>
+                  <div>
+                    <dt>Cedula</dt>
+                    <dd>{selectedMember.nationalId || 'No registrada'}</dd>
                   </div>
                   <div>
                     <dt>Generacion</dt>
