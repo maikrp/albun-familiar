@@ -283,6 +283,17 @@ Resultado:
 - Etiqueta con flecha visual, por ejemplo `↓ Hija`.
 - Tarjeta del familiar mas compacta para evitar que tape la conexion.
 
+### 13. Migracion de nombres existentes a formato propio
+
+Se agrego una migracion local para corregir registros ya guardados antes de la normalizacion.
+
+Resultado:
+
+- Al abrir la app, las personas existentes en `localStorage` se normalizan automaticamente.
+- Se corrigen nombre, rama, rol, vinculo y origen.
+- Las imagenes existentes tambien normalizan titulo y rama.
+- Esto evita que registros previos como nombres escritos en mayusculas sigan apareciendo sin formato de nombre propio.
+
 ## Verificaciones realizadas
 
 Se ejecuto:
@@ -309,6 +320,7 @@ Resultados:
 - Correccion de error por perfil sin persona seleccionada.
 - Lineas genealogicas mas visibles con etiqueta de vinculo.
 - Refuerzo visual de descendencia entre tarjetas.
+- Migracion automatica de registros existentes a nombre propio.
 
 URL local de desarrollo:
 
@@ -371,6 +383,7 @@ El repo esta publicado en GitHub y sincronizado con la rama `main`.
 ## Historial de commits
 
 ```text
+Pendiente Migrar registros existentes a proper name
 4aee52e Reforzar lineas de descendencia
 668245a Mejorar conexiones y vinculos genealogicos
 e7204c9 Normalizar captura de nombres familiares

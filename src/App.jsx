@@ -207,10 +207,38 @@ function toProperName(value) {
     .join(' ');
 }
 
+function normalizeMember(member) {
+  return {
+    ...member,
+    name: toProperName(member.name || ''),
+    branch: toProperName(member.branch || ''),
+    role: toProperName(member.role || ''),
+    relationship: toProperName(member.relationship || ''),
+    origin: toProperName(member.origin || ''),
+  };
+}
+
+function normalizePhoto(photo) {
+  return {
+    ...photo,
+    title: toProperName(photo.title || ''),
+    branch: toProperName(photo.branch || ''),
+  };
+}
+
+function readNormalizedStorageList(key, normalizer) {
+  const items = readStorageList(key);
+  const normalizedItems = items.map(normalizer);
+  if (JSON.stringify(items) !== JSON.stringify(normalizedItems)) {
+    localStorage.setItem(key, JSON.stringify(normalizedItems));
+  }
+  return normalizedItems;
+}
+
 export default function App() {
   const [query, setQuery] = useState('');
-  const [customMembers, setCustomMembers] = useState(() => readStorageList(customMembersStorageKey));
-  const [customGallery, setCustomGallery] = useState(() => readStorageList(customGalleryStorageKey));
+  const [customMembers, setCustomMembers] = useState(() => readNormalizedStorageList(customMembersStorageKey, normalizeMember));
+  const [customGallery, setCustomGallery] = useState(() => readNormalizedStorageList(customGalleryStorageKey, normalizePhoto));
   const [memberForm, setMemberForm] = useState(emptyMemberForm);
   const [photoForm, setPhotoForm] = useState(emptyPhotoForm);
   const [adminMessage, setAdminMessage] = useState('');
