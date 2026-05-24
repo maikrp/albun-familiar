@@ -312,7 +312,7 @@ El repo esta publicado en GitHub y sincronizado con la rama `main`.
 ## Historial de commits
 
 ```text
-Pendiente Limpiar datos de ejemplo para iniciar familia real
+feea566 Limpiar datos de ejemplo familiar
 58414b1 Agregar arbol interactivo y filtros familiares
 9f906da Agregar modulo administrativo familiar
 7fa9456 Agregar fondo de arbol genealogico
