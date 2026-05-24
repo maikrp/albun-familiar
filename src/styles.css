@@ -331,14 +331,19 @@ nav a {
 }
 
 .tree-shell {
+  position: relative;
   overflow: auto;
   padding: 20px 0 32px;
-  background: #fffaf2;
+  background:
+    linear-gradient(rgba(255, 250, 242, 0.78), rgba(255, 250, 242, 0.88)),
+    url("/assets/genealogy-tree-bg.png") center / cover;
   border: 1px solid #e1d6c6;
   border-radius: 8px;
 }
 
 .tree {
+  position: relative;
+  z-index: 1;
   width: max-content;
   min-width: 100%;
   display: flex;
