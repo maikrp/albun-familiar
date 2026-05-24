@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Background,
   Controls,
@@ -254,21 +254,128 @@ function publicStorageUrl(path) {
   return data.publicUrl;
 }
 
+function parseCivilRegistryText(text) {
+  if (!text) return null;
+  
+  const rawLines = text.split(/[\r\n]+/);
+  const lines = [];
+  rawLines.forEach((line) => {
+    const segments = line.split(/\t|\s{3,}/).map((s) => s.trim()).filter(Boolean);
+    lines.push(...segments);
+  });
+
+  const data = {
+    cedula: '',
+    nombre: '',
+    padre: '',
+    madre: '',
+    fechaNacimiento: '',
+    nacionalidad: '',
+    edad: '',
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    const extractValue = (currentLine, index) => {
+      const match = currentLine.match(/[:]/);
+      if (match) {
+        const val = currentLine.slice(match.index + match[0].length).trim();
+        if (val) return val;
+      }
+      if (index + 1 < lines.length) {
+        const nextLine = lines[index + 1];
+        const isKey = /c[eé]dula|nombre|hijo|nacionalidad|edad|marginal|conocido/i.test(nextLine);
+        if (!isKey) {
+          return nextLine;
+        }
+      }
+      return '';
+    };
+
+    if (/c[eé]dula/i.test(line)) {
+      data.cedula = extractValue(line, i);
+    } else if (/nombre\s+completo/i.test(line)) {
+      data.nombre = extractValue(line, i);
+    } else if (/hijo\/a\s+de/i.test(line)) {
+      data.padre = extractValue(line, i);
+    } else if (/^y\s*:/i.test(line) || /^y\s+/i.test(line) || line.trim().toLowerCase() === 'y') {
+      if (data.padre) {
+        data.madre = extractValue(line, i);
+      }
+    } else if (/fecha\s+nacimiento/i.test(line)) {
+      data.fechaNacimiento = extractValue(line, i);
+    } else if (/nacionalidad/i.test(line)) {
+      data.nacionalidad = extractValue(line, i);
+    } else if (/edad/i.test(line)) {
+      data.edad = extractValue(line, i);
+    }
+  }
+
+  const cleanField = (val) => {
+    if (!val) return '';
+    const clipMatch = val.match(/\s*(c[eé]dula|nombre|hijo|nacionalidad|edad|marginal|conocido|fecha)/i);
+    if (clipMatch) {
+      return val.slice(0, clipMatch.index).trim();
+    }
+    return val.trim();
+  };
+
+  data.nombre = cleanField(data.nombre);
+  data.cedula = cleanField(data.cedula);
+  data.padre = cleanField(data.padre);
+  data.madre = cleanField(data.madre);
+  data.fechaNacimiento = cleanField(data.fechaNacimiento);
+  data.nacionalidad = cleanField(data.nacionalidad);
+  data.edad = cleanField(data.edad);
+
+  if (!data.nombre) {
+    const nameMatch = text.match(/Nombre\s+Completo\s*[:\t]?\s*([A-ZÁÉÍÓÚÑa-záéíóúñ \t]+)/i);
+    if (nameMatch) data.nombre = nameMatch[1].trim();
+  }
+  if (!data.cedula) {
+    const idMatch = text.match(/C[eé]dula\s*[:\t]?\s*([0-9\-]+)/i);
+    if (idMatch) data.cedula = idMatch[1].trim();
+  }
+  if (!data.padre) {
+    const fatherMatch = text.match(/Hijo\/a\s+de\s*[:\t]?\s*([A-ZÁÉÍÓÚÑa-záéíóúñ \t]+)/i);
+    if (fatherMatch) data.padre = fatherMatch[1].trim();
+  }
+  if (!data.madre && data.padre) {
+    const motherMatch = text.match(/Y\s*[:\t]?\s*([A-ZÁÉÍÓÚÑa-záéíóúñ \t]+)/i);
+    if (motherMatch) data.madre = motherMatch[1].trim();
+  }
+
+  const sanitizeName = (name) => {
+    if (!name) return '';
+    return name.replace(/[0-9:]/g, '').replace(/\s+/g, ' ').trim();
+  };
+
+  data.nombre = sanitizeName(data.nombre);
+  data.padre = sanitizeName(data.padre);
+  data.madre = sanitizeName(data.madre);
+
+  if (!data.nombre && !data.cedula) {
+    return null;
+  }
+
+  return data;
+}
+
 export default function App() {
   const [query, setQuery] = useState('');
-  const [customMembers, setCustomMembers] = useState(() => readNormalizedStorageList(customMembersStorageKey, normalizeMember));
-  const [customGallery, setCustomGallery] = useState(() => readNormalizedStorageList(customGalleryStorageKey, normalizePhoto));
+  const [customMembers, setCustomMembers] = useState([]);
+  const [customGallery, setCustomGallery] = useState([]);
   const [memberForm, setMemberForm] = useState(emptyMemberForm);
   const [photoForm, setPhotoForm] = useState(emptyPhotoForm);
+  const [fastPasteText, setFastPasteText] = useState('');
+  const [parsedParents, setParsedParents] = useState({ father: '', mother: '' });
   const [adminMessage, setAdminMessage] = useState('');
   const [uploadStatus, setUploadStatus] = useState('');
   const [editingMemberId, setEditingMemberId] = useState(null);
   const [branchFilter, setBranchFilter] = useState('all');
   const [generationFilter, setGenerationFilter] = useState('all');
-  const [session, setSession] = useState(() => {
-    const savedSession = localStorage.getItem(sessionStorageKey);
-    return savedSession ? JSON.parse(savedSession) : null;
-  });
+  const [session, setSession] = useState(null);
   const [authMode, setAuthMode] = useState('register');
   const [authMessage, setAuthMessage] = useState('');
   const [authForm, setAuthForm] = useState({
@@ -323,60 +430,230 @@ export default function App() {
     : [];
 
   const isUnlocked = Boolean(session);
+  const isAdmin = session?.isAdmin;
 
-  function getUsers() {
-    const savedUsers = localStorage.getItem(usersStorageKey);
-    return savedUsers ? JSON.parse(savedUsers) : [];
-  }
+  const mapSupabaseUser = (user) => {
+    if (!user) return null;
+    return {
+      id: user.id,
+      name: user.user_metadata?.name || user.email.split('@')[0],
+      email: user.email,
+      isAdmin: user.user_metadata?.is_admin === true || user.user_metadata?.role === 'admin' || user.email === 'maikrp@gmail.com',
+    };
+  };
 
-  function saveSession(user) {
-    const cleanUser = { name: user.name, email: user.email };
-    localStorage.setItem(sessionStorageKey, JSON.stringify(cleanUser));
-    setSession(cleanUser);
-  }
+  // Recover active session on mount and set up listener
+  useEffect(() => {
+    if (!supabase) return;
 
-  function handleAuth(event) {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(mapSupabaseUser(session?.user));
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(mapSupabaseUser(session?.user));
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Fetch family data from Supabase
+  useEffect(() => {
+    if (!session || !supabase) {
+      setCustomMembers([]);
+      setCustomGallery([]);
+      return;
+    }
+
+    async function loadData() {
+      try {
+        // --- AUTO-MIGRATION LAYER FROM LOCALSTORAGE TO SUPABASE ---
+        const localMembersRaw = localStorage.getItem('family-custom-members-v2');
+        const localPhotosRaw = localStorage.getItem('family-custom-gallery-v2');
+
+        const localMembers = localMembersRaw ? JSON.parse(localMembersRaw) : [];
+        const localPhotos = localPhotosRaw ? JSON.parse(localPhotosRaw) : [];
+
+        if (localMembers.length > 0 || localPhotos.length > 0) {
+          console.log('Detectados datos locales. Iniciando migración a Supabase...');
+
+          // Map local IDs to brand new UUIDs
+          const idMap = {};
+          localMembers.forEach((member) => {
+            idMap[member.id] = crypto.randomUUID();
+          });
+
+          // Map and insert members
+          const membersToInsert = localMembers.map((member) => ({
+            id: idMap[member.id],
+            nombre: member.name,
+            rama_familiar: member.branch,
+            rol: member.role || 'Miembro Familiar',
+            cedula: member.nationalId || '',
+            vinculo: member.relationship || '',
+            periodo: member.years || '',
+            fecha_nacimiento: member.birthYear || '',
+            fecha_fallecimiento: member.deathYear || '',
+            lugar_origen: member.origin || '',
+            foto_principal: member.photo || '/assets/family-album-cover.jpg',
+            biografia: member.story || 'Historia pendiente de documentar.',
+            parent_id: member.parentId ? (idMap[member.parentId] || null) : null,
+          }));
+
+          if (membersToInsert.length > 0) {
+            const { error: insertMembersError } = await supabase
+              .from('familiares')
+              .insert(membersToInsert);
+            if (insertMembersError) throw insertMembersError;
+          }
+
+          // Map and insert photos
+          const photosToInsert = localPhotos.map((photo) => ({
+            titulo: photo.title,
+            fecha_aproximada: photo.year || 'Sin fecha',
+            rama_familiar: photo.branch || 'General',
+            url: photo.image,
+            mime_type: 'image/webp',
+          }));
+
+          if (photosToInsert.length > 0) {
+            const { error: insertPhotosError } = await supabase
+              .from('fotos')
+              .insert(photosToInsert);
+            if (insertPhotosError) throw insertPhotosError;
+          }
+
+          // Clear localStorage so we don't migrate multiple times
+          localStorage.removeItem('family-custom-members-v2');
+          localStorage.removeItem('family-custom-gallery-v2');
+          console.log('Migración de datos locales a Supabase completada con éxito.');
+        }
+        // --- END MIGRATION ---
+
+        const { data: dbFamiliares, error: familiaresError } = await supabase
+          .from('familiares')
+          .select('*');
+
+        if (familiaresError) throw familiaresError;
+
+        const mappedMembers = (dbFamiliares || []).map((dbMember) => ({
+          id: dbMember.id,
+          name: dbMember.nombre,
+          branch: dbMember.rama_familiar,
+          role: dbMember.rol || 'Miembro Familiar',
+          nationalId: dbMember.cedula || '',
+          relationship: dbMember.vinculo || '',
+          years: dbMember.periodo || '',
+          birthYear: dbMember.fecha_nacimiento || '',
+          deathYear: dbMember.fecha_fallecimiento || '',
+          origin: dbMember.lugar_origen || '',
+          photo: dbMember.foto_principal || '/assets/family-album-cover.jpg',
+          story: dbMember.biografia || 'Historia pendiente de documentar.',
+          parentId: dbMember.parent_id || null,
+          custom: true,
+        }));
+
+        setCustomMembers(mappedMembers);
+
+        const { data: dbFotos, error: fotosError } = await supabase
+          .from('fotos')
+          .select('*');
+
+        if (fotosError) throw fotosError;
+
+        const mappedPhotos = (dbFotos || []).map((dbPhoto) => ({
+          id: dbPhoto.id,
+          title: dbPhoto.titulo,
+          year: dbPhoto.fecha_aproximada || 'Sin fecha',
+          branch: dbPhoto.rama_familiar || 'General',
+          image: dbPhoto.url,
+          custom: true,
+        }));
+
+        setCustomGallery(mappedPhotos);
+      } catch (error) {
+        console.error('Error cargando datos de Supabase:', error);
+      }
+    }
+
+    loadData();
+  }, [session]);
+
+  async function handleAuth(event) {
     event.preventDefault();
     setAuthMessage('');
 
     const name = authForm.name.trim();
     const email = authForm.email.trim().toLowerCase();
     const formPassword = authForm.password.trim();
-    const users = getUsers();
 
     if (!email || !formPassword || (authMode === 'register' && !name)) {
       setAuthMessage('Completa los campos para continuar.');
       return;
     }
 
-    if (authMode === 'register') {
-      if (users.some((user) => user.email === email)) {
-        setAuthMessage('Ese correo ya tiene una cuenta. Usa iniciar sesion.');
+    if (!supabase) {
+      setAuthMessage('Supabase no esta configurado.');
+      return;
+    }
+
+    setAuthMessage(authMode === 'register' ? 'Registrando...' : 'Iniciando sesion...');
+
+    try {
+      if (authMode === 'register') {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password: formPassword,
+          options: {
+            data: { name },
+          },
+        });
+
+        if (error) {
+          setAuthMessage(`Error al registrarse: ${error.message}`);
+          return;
+        }
+
+        if (data.session) {
+          setSession(mapSupabaseUser(data.user));
+          setAuthMessage('');
+        } else {
+          setAuthMessage('Registro exitoso. Si tienes activada la confirmación por email en Supabase, debes verificar tu bandeja antes de iniciar sesión.');
+          setAuthMode('login');
+        }
         return;
       }
 
-      const newUser = {
-        name,
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password: formPassword,
-        createdAt: new Date().toISOString(),
-      };
-      const nextUsers = [...users, newUser];
-      localStorage.setItem(usersStorageKey, JSON.stringify(nextUsers));
-      saveSession(newUser);
-      return;
+      });
+
+      if (error) {
+        if (error.message.toLowerCase().includes('confirm') || error.message.toLowerCase().includes('verified')) {
+          setAuthMessage('Error: Correo electrónico no confirmado. Revisa tu bandeja de entrada o desactiva "Confirm Email" en el panel de Supabase Auth.');
+        } else if (error.message.toLowerCase().includes('invalid')) {
+          setAuthMessage('Error: Credenciales incorrectas. Verifica tu correo y contraseña.');
+        } else {
+          setAuthMessage(`Error: ${error.message}`);
+        }
+        return;
+      }
+
+      if (data.user) {
+        setSession(mapSupabaseUser(data.user));
+        setAuthMessage('');
+      }
+    } catch (err) {
+      setAuthMessage(`Error inesperado: ${err.message}`);
     }
+  }
 
-    const existingUser = users.find(
-      (user) => user.email === email && user.password === formPassword,
-    );
-
-    if (!existingUser) {
-      setAuthMessage('No encontre una cuenta con esos datos.');
-      return;
+  async function handleLogout() {
+    if (supabase) {
+      await supabase.auth.signOut();
     }
-
-    saveSession(existingUser);
+    setSession(null);
   }
 
   function updateAuthForm(field, value) {
@@ -398,6 +675,39 @@ export default function App() {
       ...current,
       [field]: value,
     }));
+  }
+
+  function handleFastPaste(text) {
+    setFastPasteText(text);
+    if (!text.trim()) {
+      setParsedParents({ father: '', mother: '' });
+      return;
+    }
+
+    const parsed = parseCivilRegistryText(text);
+    if (!parsed) {
+      return;
+    }
+
+    const birthYearExtracted = parsed.fechaNacimiento?.includes('/')
+      ? parsed.fechaNacimiento.split('/').pop().trim()
+      : '';
+
+    setMemberForm((current) => ({
+      ...current,
+      name: toProperName(parsed.nombre),
+      nationalId: parsed.cedula.trim(),
+      birthYear: birthYearExtracted,
+      origin: parsed.nacionalidad.toLowerCase().includes('costarricense') ? 'Costa Rica' : toProperName(parsed.nacionalidad),
+      story: `Ficha registrada desde el Registro Civil. Edad: ${toProperName(parsed.edad)}.`,
+    }));
+
+    setParsedParents({
+      father: toProperName(parsed.padre),
+      mother: toProperName(parsed.madre),
+    });
+
+    setAdminMessage(`✓ Ficha parseada: ${toProperName(parsed.nombre)} (Cédula: ${parsed.cedula}). Padres detectados: ${toProperName(parsed.padre)} y ${toProperName(parsed.madre)}.`);
   }
 
   async function uploadWebpToSupabase(file, folder) {
@@ -432,24 +742,22 @@ export default function App() {
       return;
     }
 
-    setUploadStatus('Convirtiendo imagen a WebP...');
-    try {
-      if (supabase) {
-        const uploaded = await uploadWebpToSupabase(file, folder);
-        callback(uploaded.url);
-        setUploadStatus(`Imagen WebP subida a Supabase (${Math.round(uploaded.webpBytes / 1024)} KB).`);
-        return;
-      }
+    if (!supabase) {
+      setUploadStatus('Error: Supabase no está configurado. Carga en la nube requerida.');
+      return;
+    }
 
-      const converted = await convertImageFileToWebp(file);
-      callback(converted.dataUrl);
-      setUploadStatus(`Imagen convertida a WebP local (${Math.round(converted.webpBytes / 1024)} KB). Configura Supabase para subirla a la nube.`);
+    setUploadStatus('Convirtiendo imagen a WebP y subiendo a Supabase Storage...');
+    try {
+      const uploaded = await uploadWebpToSupabase(file, folder);
+      callback(uploaded.url);
+      setUploadStatus(`Imagen WebP subida exitosamente a Supabase Storage (${Math.round(uploaded.webpBytes / 1024)} KB).`);
     } catch (error) {
-      setUploadStatus(error.message || 'No se pudo procesar la imagen.');
+      setUploadStatus(`Error al subir a Supabase: ${error.message || 'No se pudo procesar la imagen.'}`);
     }
   }
 
-  function submitMember(event) {
+  async function submitMember(event) {
     event.preventDefault();
     setAdminMessage('');
 
@@ -467,30 +775,202 @@ export default function App() {
     const years = memberForm.deathYear.trim()
       ? `${memberForm.birthYear.trim() || 'Sin fecha'} - ${memberForm.deathYear.trim()}`
       : memberForm.birthYear.trim() || 'Sin fecha';
-    const memberPayload = {
-      id: editingMemberId || `persona-${Date.now()}`,
-      name: normalizedName,
-      branch: normalizedBranch,
-      role: normalizedRole || 'Miembro Familiar',
-      nationalId: memberForm.nationalId.trim(),
-      relationship: memberForm.parentId ? normalizedRelationship || 'Descendiente' : 'Persona Inicial',
-      years,
-      origin: normalizedOrigin || 'Por Documentar',
-      photo: memberForm.photo.trim() || '/assets/family-album-cover.jpg',
-      story: memberForm.story.trim() || 'Historia pendiente de documentar.',
-      parentId: memberForm.parentId || null,
-      custom: true,
-    };
 
-    const nextMembers = editingMemberId
-      ? customMembers.map((member) => (member.id === editingMemberId ? memberPayload : member))
-      : [...customMembers, memberPayload];
-    setCustomMembers(nextMembers);
-    localStorage.setItem(customMembersStorageKey, JSON.stringify(nextMembers));
-    setSelectedMember(memberPayload);
-    setMemberForm(emptyMemberForm);
-    setEditingMemberId(null);
-    setAdminMessage(editingMemberId ? 'Persona actualizada.' : 'Persona agregada al arbol familiar.');
+    if (!supabase) {
+      setAdminMessage('Supabase no esta configurado.');
+      return;
+    }
+
+    setAdminMessage('Guardando...');
+
+    try {
+      let fatherId = null;
+      let motherId = null;
+      const newParentsToAppend = [];
+
+      // 1. Father resolution
+      if (parsedParents.father) {
+        const existingFather = allMembers.find(
+          (m) => m.name.toLowerCase() === parsedParents.father.toLowerCase()
+        );
+        if (existingFather) {
+          fatherId = existingFather.id;
+        } else {
+          setAdminMessage(`Creando registro para el padre: ${parsedParents.father}...`);
+          const { data: fData, error: fErr } = await supabase
+            .from('familiares')
+            .insert({
+              nombre: parsedParents.father,
+              rama_familiar: normalizedBranch,
+              rol: 'Padre',
+              vinculo: 'Padre',
+              foto_principal: '/assets/family-album-cover.jpg',
+              biografia: `Padre de ${normalizedName}.`,
+            })
+            .select()
+            .single();
+
+          if (fErr) throw fErr;
+          fatherId = fData.id;
+
+          const newFatherMember = {
+            id: fData.id,
+            name: fData.nombre,
+            branch: fData.rama_familiar,
+            role: fData.rol,
+            nationalId: fData.cedula || '',
+            relationship: fData.vinculo || '',
+            years: fData.periodo || '',
+            birthYear: fData.fecha_nacimiento || '',
+            deathYear: fData.fecha_fallecimiento || '',
+            origin: fData.lugar_origen || '',
+            photo: fData.foto_principal,
+            story: fData.biografia,
+            parentId: fData.parent_id,
+            custom: true,
+          };
+          newParentsToAppend.push(newFatherMember);
+        }
+      }
+
+      // 2. Mother resolution
+      if (parsedParents.mother) {
+        const existingMother = allMembers.find(
+          (m) => m.name.toLowerCase() === parsedParents.mother.toLowerCase()
+        );
+        if (existingMother) {
+          motherId = existingMother.id;
+        } else {
+          setAdminMessage(`Creando registro para la madre: ${parsedParents.mother}...`);
+          const { data: mData, error: mErr } = await supabase
+            .from('familiares')
+            .insert({
+              nombre: parsedParents.mother,
+              rama_familiar: normalizedBranch,
+              rol: 'Madre',
+              vinculo: 'Madre',
+              foto_principal: '/assets/family-album-cover.jpg',
+              biografia: `Madre de ${normalizedName}.`,
+            })
+            .select()
+            .single();
+
+          if (mErr) throw mErr;
+          motherId = mData.id;
+
+          const newMotherMember = {
+            id: mData.id,
+            name: mData.nombre,
+            branch: mData.rama_familiar,
+            role: mData.rol,
+            nationalId: mData.cedula || '',
+            relationship: mData.vinculo || '',
+            years: mData.periodo || '',
+            birthYear: mData.fecha_nacimiento || '',
+            deathYear: mData.fecha_fallecimiento || '',
+            origin: mData.lugar_origen || '',
+            photo: mData.foto_principal,
+            story: mData.biografia,
+            parentId: mData.parent_id,
+            custom: true,
+          };
+          newParentsToAppend.push(newMotherMember);
+        }
+      }
+
+      const dbPayload = {
+        nombre: normalizedName,
+        rama_familiar: normalizedBranch,
+        rol: normalizedRole || 'Miembro Familiar',
+        cedula: memberForm.nationalId.trim(),
+        vinculo: memberForm.parentId ? normalizedRelationship || 'Descendiente' : 'Persona Inicial',
+        periodo: years,
+        fecha_nacimiento: memberForm.birthYear.trim(),
+        fecha_fallecimiento: memberForm.deathYear.trim(),
+        lugar_origen: normalizedOrigin || 'Por Documentar',
+        foto_principal: memberForm.photo.trim() || '/assets/family-album-cover.jpg',
+        biografia: memberForm.story.trim() || 'Historia pendiente de documentar.',
+        parent_id: memberForm.parentId || fatherId || motherId || null,
+        padre_id: fatherId || null,
+        madre_id: motherId || null,
+      };
+
+      if (editingMemberId) {
+        const { data, error } = await supabase
+          .from('familiares')
+          .update(dbPayload)
+          .eq('id', editingMemberId)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        const updatedMember = {
+          id: data.id,
+          name: data.nombre,
+          branch: data.rama_familiar,
+          role: data.rol,
+          nationalId: data.cedula,
+          relationship: data.vinculo,
+          years: data.periodo,
+          birthYear: data.fecha_nacimiento,
+          deathYear: data.fecha_fallecimiento,
+          origin: data.lugar_origen,
+          photo: data.foto_principal,
+          story: data.biografia,
+          parentId: data.parent_id,
+          custom: true,
+        };
+
+        const nextMembers = customMembers.map((m) => (m.id === editingMemberId ? updatedMember : m));
+        setCustomMembers([...nextMembers, ...newParentsToAppend]);
+        setSelectedMember(updatedMember);
+        setAdminMessage(newParentsToAppend.length > 0 
+          ? `Persona actualizada. Se agregaron y vincularon ${newParentsToAppend.length} padres.`
+          : 'Persona actualizada correctamente.'
+        );
+      } else {
+        const { data, error } = await supabase
+          .from('familiares')
+          .insert(dbPayload)
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        const newMember = {
+          id: data.id,
+          name: data.nombre,
+          branch: data.rama_familiar,
+          role: data.rol,
+          nationalId: data.cedula,
+          relationship: data.vinculo,
+          years: data.periodo,
+          birthYear: data.fecha_nacimiento,
+          deathYear: data.fecha_fallecimiento,
+          origin: data.lugar_origen,
+          photo: data.foto_principal,
+          story: data.biografia,
+          parentId: data.parent_id,
+          custom: true,
+        };
+
+        setCustomMembers([...customMembers, ...newParentsToAppend, newMember]);
+        setSelectedMember(newMember);
+        setAdminMessage(newParentsToAppend.length > 0
+          ? `✓ Persona agregada exitosamente y vinculada con sus ${newParentsToAppend.length} padres en Supabase.`
+          : 'Persona agregada al arbol familiar.'
+        );
+      }
+
+      setMemberForm(emptyMemberForm);
+      setFastPasteText('');
+      setParsedParents({ father: '', mother: '' });
+      setEditingMemberId(null);
+    } catch (error) {
+      console.error(error);
+      setAdminMessage(`Error al guardar: ${error.message}`);
+    }
   }
 
   function editCustomMember(member) {
@@ -500,8 +980,8 @@ export default function App() {
       branch: member.branch || '',
       role: member.role || '',
       nationalId: member.nationalId || '',
-      birthYear: member.years?.includes(' - ') ? member.years.split(' - ')[0] : member.years || '',
-      deathYear: member.years?.includes(' - ') ? member.years.split(' - ')[1] : '',
+      birthYear: member.birthYear || '',
+      deathYear: member.deathYear || '',
       origin: member.origin || '',
       parentId: member.parentId || '',
       relationship: member.relationship || '',
@@ -517,7 +997,7 @@ export default function App() {
     setAdminMessage('');
   }
 
-  function addPhoto(event) {
+  async function addPhoto(event) {
     event.preventDefault();
     setAdminMessage('');
 
@@ -529,35 +1009,90 @@ export default function App() {
       return;
     }
 
-    const newPhoto = {
-      id: `foto-${Date.now()}`,
-      title: normalizedTitle,
-      year: photoForm.year.trim() || 'Sin fecha',
-      branch: normalizedBranch || 'General',
-      image: photoForm.image.trim(),
-      custom: true,
+    if (!supabase) {
+      setAdminMessage('Supabase no esta configurado.');
+      return;
+    }
+
+    const dbPayload = {
+      titulo: normalizedTitle,
+      fecha_aproximada: photoForm.year.trim() || 'Sin fecha',
+      rama_familiar: normalizedBranch || 'General',
+      url: photoForm.image.trim(),
+      mime_type: 'image/webp',
     };
 
-    const nextGallery = [...customGallery, newPhoto];
-    setCustomGallery(nextGallery);
-    localStorage.setItem(customGalleryStorageKey, JSON.stringify(nextGallery));
-    setPhotoForm(emptyPhotoForm);
-    setAdminMessage('Imagen agregada a la galeria familiar.');
-  }
+    setAdminMessage('Guardando imagen...');
+    try {
+      const { data, error } = await supabase
+        .from('fotos')
+        .insert(dbPayload)
+        .select()
+        .single();
 
-  function deleteCustomMember(memberId) {
-    const nextMembers = customMembers.filter((member) => member.id !== memberId);
-    setCustomMembers(nextMembers);
-    localStorage.setItem(customMembersStorageKey, JSON.stringify(nextMembers));
-    if (selectedMember?.id === memberId) {
-      setSelectedMember(nextMembers[0] || null);
+      if (error) throw error;
+
+      const newPhoto = {
+        id: data.id,
+        title: data.titulo,
+        year: data.fecha_aproximada || 'Sin fecha',
+        branch: data.rama_familiar || 'General',
+        image: data.url,
+        custom: true,
+      };
+
+      setCustomGallery([...customGallery, newPhoto]);
+      setPhotoForm(emptyPhotoForm);
+      setAdminMessage('Imagen agregada a la galeria familiar.');
+    } catch (error) {
+      console.error(error);
+      setAdminMessage(`Error al guardar imagen: ${error.message}`);
     }
   }
 
-  function deleteCustomPhoto(photoId) {
-    const nextGallery = customGallery.filter((item) => item.id !== photoId);
-    setCustomGallery(nextGallery);
-    localStorage.setItem(customGalleryStorageKey, JSON.stringify(nextGallery));
+  async function deleteCustomMember(memberId) {
+    if (!supabase) return;
+
+    setAdminMessage('Eliminando...');
+    try {
+      const { error } = await supabase
+        .from('familiares')
+        .delete()
+        .eq('id', memberId);
+
+      if (error) throw error;
+
+      const nextMembers = customMembers.filter((member) => member.id !== memberId);
+      setCustomMembers(nextMembers);
+      if (selectedMember?.id === memberId) {
+        setSelectedMember(nextMembers[0] || null);
+      }
+      setAdminMessage('Persona eliminada correctamente.');
+    } catch (error) {
+      console.error(error);
+      setAdminMessage(`Error al eliminar: ${error.message}`);
+    }
+  }
+
+  async function deleteCustomPhoto(photoId) {
+    if (!supabase) return;
+
+    setAdminMessage('Eliminando imagen...');
+    try {
+      const { error } = await supabase
+        .from('fotos')
+        .delete()
+        .eq('id', photoId);
+
+      if (error) throw error;
+
+      const nextGallery = customGallery.filter((item) => item.id !== photoId);
+      setCustomGallery(nextGallery);
+      setAdminMessage('Imagen eliminada correctamente.');
+    } catch (error) {
+      console.error(error);
+      setAdminMessage(`Error al eliminar imagen: ${error.message}`);
+    }
   }
 
   if (!isUnlocked) {
@@ -641,6 +1176,44 @@ export default function App() {
   }
 
   if (window.location.pathname === '/admin') {
+    if (!isAdmin) {
+      return (
+        <main className="lock-screen access-denied">
+          <section className="lock-panel" style={{ maxWidth: '420px', textAlign: 'center' }}>
+            <div className="brand-mark alert-mark" style={{ borderColor: '#ea580c', color: '#ea580c', margin: '0 auto 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '64px', height: '64px', borderRadius: '50%', border: '2px solid' }}>
+              <Shield size={32} />
+            </div>
+            <p style={{ color: '#ea580c', fontWeight: 'bold', textTransform: 'uppercase', tracking: '0.05em', fontSize: '0.85rem' }}>Acceso Restringido</p>
+            <h1 style={{ fontSize: '1.8rem', margin: '0.5rem 0 1rem', fontFamily: 'Inter, sans-serif' }}>Solo Administradores</h1>
+            <p style={{ opacity: 0.8, fontSize: '0.9rem', marginBottom: '2rem', lineHeight: '1.5' }}>
+              Tu cuenta ({session?.email}) no cuenta con privilegios de administrador para gestionar este archivo familiar.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', width: '100%' }}>
+              <a className="primary-link" href="/" style={{ justifyContent: 'center', width: '100%', textAlign: 'center', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <BookOpen size={18} />
+                Regresar al Álbum
+              </a>
+              <button 
+                onClick={handleLogout} 
+                style={{ 
+                  backgroundColor: 'rgba(234, 88, 12, 0.1)', 
+                  color: '#ea580c', 
+                  border: '1px solid rgba(234, 88, 12, 0.2)',
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                Cerrar Sesión
+              </button>
+            </div>
+          </section>
+        </main>
+      );
+    }
+
     return (
       <main className="admin-page">
         <header className="admin-header">
@@ -674,6 +1247,26 @@ export default function App() {
               <div className="panel-title">
                 <UserRound size={20} />
                 <h3>{editingMemberId ? 'Editar persona' : 'Nueva persona'}</h3>
+              </div>
+
+              <div className="fast-paste-container" style={{ marginBottom: '1.5rem', padding: '1rem', backgroundColor: 'rgba(234, 88, 12, 0.05)', borderRadius: '8px', border: '1px dashed rgba(234, 88, 12, 0.25)', width: '100%', boxSizing: 'border-box' }}>
+                <label htmlFor="fast-paste" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 'bold', color: '#ea580c', marginBottom: '0.5rem', fontSize: '0.9rem' }}>
+                  <Sparkles size={16} />
+                  Pegado Rápido (Ficha Registro Civil)
+                </label>
+                <textarea
+                  id="fast-paste"
+                  value={fastPasteText}
+                  onChange={(event) => handleFastPaste(event.target.value)}
+                  placeholder="Copia la ficha completa de la consulta TSE y pégala aquí. El sistema auto-rellenará los campos y creará al padre y madre al guardar..."
+                  style={{ width: '100%', height: '80px', fontSize: '0.85rem', padding: '0.5rem', borderRadius: '6px', border: '1px solid rgba(234, 88, 12, 0.2)', backgroundColor: '#fffaf2', resize: 'vertical', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                />
+                {parsedParents.father && (
+                  <div style={{ marginTop: '0.6rem', fontSize: '0.8rem', fontWeight: '500', display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <span style={{ backgroundColor: 'rgba(49, 93, 140, 0.08)', color: '#315d8c', padding: '0.2rem 0.6rem', borderRadius: '4px', border: '1px solid rgba(49, 93, 140, 0.15)' }}>👨‍👦 Padre: {parsedParents.father}</span>
+                    <span style={{ backgroundColor: 'rgba(78, 124, 85, 0.08)', color: '#4e7c55', padding: '0.2rem 0.6rem', borderRadius: '4px', border: '1px solid rgba(78, 124, 85, 0.15)' }}>👩‍👦 Madre: {parsedParents.mother}</span>
+                  </div>
+                )}
               </div>
               <label htmlFor="member-name">Nombre completo</label>
               <input
@@ -922,10 +1515,7 @@ export default function App() {
           </div>
         </section>
 
-        <button className="floating-close" onClick={() => {
-          localStorage.removeItem(sessionStorageKey);
-          setSession(null);
-        }} title="Cerrar sesion" type="button">
+        <button className="floating-close" onClick={handleLogout} title="Cerrar sesion" type="button">
           <X size={18} />
         </button>
       </main>
@@ -958,10 +1548,12 @@ export default function App() {
               <Camera size={18} />
               Abrir album
             </a>
-            <a className="secondary-link" href="/admin">
-              <Shield size={18} />
-              Gestionar
-            </a>
+            {isAdmin && (
+              <a className="secondary-link" href="/admin">
+                <Shield size={18} />
+                Gestionar
+              </a>
+            )}
           </div>
         </div>
       </header>
@@ -1261,10 +1853,7 @@ export default function App() {
         </span>
       </footer>
 
-      <button className="floating-close" onClick={() => {
-        localStorage.removeItem(sessionStorageKey);
-        setSession(null);
-      }} title="Cerrar sesion" type="button">
+      <button className="floating-close" onClick={handleLogout} title="Cerrar sesion" type="button">
         <X size={18} />
       </button>
     </main>
