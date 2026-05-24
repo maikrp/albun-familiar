@@ -578,6 +578,7 @@ export default function App() {
           story: dbMember.biografia || 'Historia pendiente de documentar.',
           parentId: dbMember.parent_id || null,
           custom: true,
+          createdBy: dbMember.creado_por || null,
         }));
 
         setCustomMembers(mappedMembers);
@@ -595,6 +596,7 @@ export default function App() {
           branch: dbPhoto.rama_familiar || 'General',
           image: dbPhoto.url,
           custom: true,
+          createdBy: dbPhoto.creado_por || null,
         }));
 
         setCustomGallery(mappedPhotos);
@@ -859,6 +861,7 @@ export default function App() {
             story: fData.biografia,
             parentId: fData.parent_id,
             custom: true,
+            createdBy: fData.creado_por || null,
           };
           newParentsToAppend.push(newFatherMember);
         }
@@ -904,6 +907,7 @@ export default function App() {
             story: mData.biografia,
             parentId: mData.parent_id,
             custom: true,
+            createdBy: mData.creado_por || null,
           };
           newParentsToAppend.push(newMotherMember);
         }
@@ -951,6 +955,7 @@ export default function App() {
           story: data.biografia,
           parentId: data.parent_id,
           custom: true,
+          createdBy: data.creado_por || null,
         };
 
         const nextMembers = customMembers.map((m) => (m.id === editingMemberId ? updatedMember : m));
@@ -984,6 +989,7 @@ export default function App() {
           story: data.biografia,
           parentId: data.parent_id,
           custom: true,
+          createdBy: data.creado_por || null,
         };
 
         setCustomMembers([...customMembers, ...newParentsToAppend, newMember]);
@@ -1070,6 +1076,7 @@ export default function App() {
         branch: data.rama_familiar || 'General',
         image: data.url,
         custom: true,
+        createdBy: data.creado_por || null,
       };
 
       setCustomGallery([...customGallery, newPhoto]);
@@ -1207,43 +1214,6 @@ export default function App() {
   }
 
   if (window.location.pathname === '/admin') {
-    if (!isAdmin) {
-      return (
-        <main className="lock-screen access-denied">
-          <section className="lock-panel" style={{ maxWidth: '420px', textAlign: 'center' }}>
-            <div className="brand-mark alert-mark" style={{ borderColor: '#ea580c', color: '#ea580c', margin: '0 auto 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '64px', height: '64px', borderRadius: '50%', border: '2px solid' }}>
-              <Shield size={32} />
-            </div>
-            <p style={{ color: '#ea580c', fontWeight: 'bold', textTransform: 'uppercase', tracking: '0.05em', fontSize: '0.85rem' }}>Acceso Restringido</p>
-            <h1 style={{ fontSize: '1.8rem', margin: '0.5rem 0 1rem', fontFamily: 'Inter, sans-serif' }}>Solo Administradores</h1>
-            <p style={{ opacity: 0.8, fontSize: '0.9rem', marginBottom: '2rem', lineHeight: '1.5' }}>
-              Tu cuenta ({session?.email}) no cuenta con privilegios de administrador para gestionar este archivo familiar.
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem', width: '100%' }}>
-              <a className="primary-link" href="/" style={{ justifyContent: 'center', width: '100%', textAlign: 'center', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <BookOpen size={18} />
-                Regresar al Álbum
-              </a>
-              <button 
-                onClick={handleLogout} 
-                style={{ 
-                  backgroundColor: 'rgba(234, 88, 12, 0.1)', 
-                  color: '#ea580c', 
-                  border: '1px solid rgba(234, 88, 12, 0.2)',
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.5rem'
-                }}
-              >
-                Cerrar Sesión
-              </button>
-            </div>
-          </section>
-        </main>
-      );
-    }
 
     return (
       <main className="admin-page">
@@ -1513,18 +1483,25 @@ export default function App() {
               {customMembers.length === 0 ? (
                 <p>Aun no hay personas agregadas desde el modulo administrativo.</p>
               ) : (
-                customMembers.map((member) => (
-                  <div className="admin-list-item" key={member.id}>
-                    <img src={member.photo} alt="" />
-                    <span>{member.name}</span>
-                    <button onClick={() => editCustomMember(member)} title="Editar persona" type="button">
-                      <Save size={16} />
-                    </button>
-                    <button onClick={() => deleteCustomMember(member.id)} title="Eliminar persona" type="button">
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))
+                customMembers.map((member) => {
+                  const canEditMember = isAdmin || member.createdBy === session?.id;
+                  return (
+                    <div className="admin-list-item" key={member.id}>
+                      <img src={member.photo} alt="" />
+                      <span>{member.name}</span>
+                      {canEditMember && (
+                        <>
+                          <button onClick={() => editCustomMember(member)} title="Editar persona" type="button">
+                            <Save size={16} />
+                          </button>
+                          <button onClick={() => deleteCustomMember(member.id)} title="Eliminar persona" type="button">
+                            <Trash2 size={16} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  );
+                })
               )}
             </article>
             <article>
@@ -1532,15 +1509,20 @@ export default function App() {
               {customGallery.length === 0 ? (
                 <p>Aun no hay imagenes agregadas desde el modulo administrativo.</p>
               ) : (
-                customGallery.map((item) => (
-                  <div className="admin-list-item" key={item.id}>
-                    <img src={item.image} alt="" />
-                    <span>{item.title}</span>
-                    <button onClick={() => deleteCustomPhoto(item.id)} title="Eliminar imagen" type="button">
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))
+                customGallery.map((item) => {
+                  const canDeletePhoto = isAdmin || item.createdBy === session?.id;
+                  return (
+                    <div className="admin-list-item" key={item.id}>
+                      <img src={item.image} alt="" />
+                      <span>{item.title}</span>
+                      {canDeletePhoto && (
+                        <button onClick={() => deleteCustomPhoto(item.id)} title="Eliminar imagen" type="button">
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })
               )}
             </article>
           </div>
@@ -1579,7 +1561,7 @@ export default function App() {
               <Camera size={18} />
               Abrir album
             </a>
-            {isAdmin && (
+            {isUnlocked && (
               <a className="secondary-link" href="/admin">
                 <Shield size={18} />
                 Gestionar
