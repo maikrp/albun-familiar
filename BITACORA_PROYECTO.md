@@ -216,6 +216,20 @@ Nota:
 
 La integracion actual usa datos locales y de ejemplo. Para escalar a miles de miembros, el siguiente paso es mover los datos a Supabase y mantener React Flow como capa visual.
 
+### 8. Limpieza de datos de ejemplo
+
+Se eliminaron todos los datos ficticios para que el proyecto pueda empezar con la familia real del usuario.
+
+Resultado:
+
+- `familyMembers` queda vacio.
+- `branches` queda vacio.
+- `gallery` queda vacio.
+- `timeline` queda vacio.
+- Se agregaron estados vacios para arbol, perfil, ramas, galeria y linea de tiempo.
+- Se cambiaron las claves de almacenamiento local de personas e imagenes a una nueva version para evitar que registros del prototipo anterior vuelvan a aparecer.
+- El modulo `Administrar` queda como punto de entrada para crear la primera persona, cargar imagenes y construir el arbol propio.
+
 ## Verificaciones realizadas
 
 Se ejecuto:
@@ -236,6 +250,7 @@ Resultados:
 - Fondo de arbol genealogico compilado correctamente.
 - Modulo administrativo compilado correctamente.
 - Arbol interactivo con React Flow compilado correctamente.
+- Estado inicial sin personas compilado correctamente.
 
 URL local de desarrollo:
 
@@ -259,6 +274,7 @@ Actualmente permite:
 - Seleccionar familiares.
 - Consultar perfiles.
 - Consultar expediente documental basico por persona.
+- Empezar desde una base limpia sin familiares ficticios.
 - Ver ramas familiares.
 - Ver galeria.
 - Revisar linea de tiempo.
@@ -296,6 +312,7 @@ El repo esta publicado en GitHub y sincronizado con la rama `main`.
 ## Historial de commits
 
 ```text
+Pendiente Limpiar datos de ejemplo para iniciar familia real
 58414b1 Agregar arbol interactivo y filtros familiares
 9f906da Agregar modulo administrativo familiar
 7fa9456 Agregar fondo de arbol genealogico

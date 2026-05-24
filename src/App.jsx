@@ -32,8 +32,8 @@ import { isSupabaseConfigured } from './lib/supabase.js';
 
 const usersStorageKey = 'family-users';
 const sessionStorageKey = 'family-session';
-const customMembersStorageKey = 'family-custom-members';
-const customGalleryStorageKey = 'family-custom-gallery';
+const customMembersStorageKey = 'family-custom-members-v2';
+const customGalleryStorageKey = 'family-custom-gallery-v2';
 
 const emptyMemberForm = {
   name: '',
@@ -179,7 +179,7 @@ export default function App() {
   });
   const allMembers = useMemo(() => [...familyMembers, ...customMembers], [customMembers]);
   const allGallery = useMemo(() => [...gallery, ...customGallery], [customGallery]);
-  const [selectedMember, setSelectedMember] = useState(familyMembers[0]);
+  const [selectedMember, setSelectedMember] = useState(null);
   const generations = useMemo(() => {
     const cache = new Map();
     return [...new Set(allMembers.map((member) => getMemberGeneration(member, allMembers, cache)))]
@@ -189,22 +189,39 @@ export default function App() {
     () => [...new Set(allMembers.map((member) => member.branch).filter(Boolean))].sort(),
     [allMembers],
   );
+  const dynamicBranches = useMemo(() => {
+    const seededBranches = branches;
+    const seededNames = new Set(seededBranches.map((branch) => branch.name.replace('Rama ', '')));
+    const createdBranches = branchOptions
+      .filter((branch) => !seededNames.has(branch))
+      .map((branch) => ({
+        name: `Rama ${branch}`,
+        summary: 'Rama creada desde el modulo administrativo. Agrega historias, fotos y contexto para documentarla.',
+        cover: allGallery.find((item) => item.branch === branch)?.image || '/assets/family-album-cover.jpg',
+        count: allGallery.filter((item) => item.branch === branch).length,
+      }));
+    return [...seededBranches, ...createdBranches];
+  }, [allGallery, branchOptions]);
   const flowElements = useMemo(
     () => createFlowElements(
       allMembers,
       { branch: branchFilter, generation: generationFilter, query },
-      selectedMember.id,
+      selectedMember?.id,
     ),
-    [allMembers, branchFilter, generationFilter, query, selectedMember.id],
+    [allMembers, branchFilter, generationFilter, query, selectedMember?.id],
   );
 
   const filteredMembers = allMembers.filter((member) => {
     const text = `${member.name} ${member.branch} ${member.origin} ${member.role}`.toLowerCase();
     return text.includes(query.toLowerCase());
   });
-  const selectedChildren = allMembers.filter((member) => member.parentId === selectedMember.id);
-  const selectedGeneration = getMemberGeneration(selectedMember, allMembers);
-  const relatedPhotos = allGallery.filter((item) => item.branch === selectedMember.branch);
+  const selectedChildren = selectedMember
+    ? allMembers.filter((member) => member.parentId === selectedMember.id)
+    : [];
+  const selectedGeneration = selectedMember ? getMemberGeneration(selectedMember, allMembers) : 0;
+  const relatedPhotos = selectedMember
+    ? allGallery.filter((item) => item.branch === selectedMember.branch)
+    : [];
 
   const isUnlocked = Boolean(session);
 
@@ -356,8 +373,8 @@ export default function App() {
     const nextMembers = customMembers.filter((member) => member.id !== memberId);
     setCustomMembers(nextMembers);
     localStorage.setItem(customMembersStorageKey, JSON.stringify(nextMembers));
-    if (selectedMember.id === memberId) {
-      setSelectedMember(familyMembers[0]);
+    if (selectedMember?.id === memberId) {
+      setSelectedMember(nextMembers[0] || null);
     }
   }
 
@@ -481,7 +498,7 @@ export default function App() {
       <section className="dashboard-band">
         <div className="dashboard">
           <Stat icon={UserRound} label="Personas" value={allMembers.length} />
-          <Stat icon={GitBranch} label="Ramas" value={branches.length} />
+          <Stat icon={GitBranch} label="Ramas" value={dynamicBranches.length} />
           <Stat icon={Camera} label="Fotos" value={allGallery.length} />
           <Stat icon={Shield} label="Supabase" value={isSupabaseConfigured ? 'Listo' : 'Pendiente'} />
         </div>
@@ -747,87 +764,98 @@ export default function App() {
           </div>
         </div>
         <div className="tree-shell flow-shell">
-          <ReactFlow
-            nodes={flowElements.nodes}
-            edges={flowElements.edges}
-            onNodeClick={(_, node) => {
-              const member = allMembers.find((candidate) => candidate.id === node.id);
-              if (member) {
-                setSelectedMember(member);
-              }
-            }}
-            fitView
-            minZoom={0.35}
-            maxZoom={1.7}
-          >
-            <Background color="#c2b7a8" gap={24} />
-            <MiniMap pannable zoomable nodeStrokeWidth={3} />
-            <Controls showInteractive={false} />
-          </ReactFlow>
-          {flowElements.nodes.length === 0 && (
+          {flowElements.nodes.length > 0 ? (
+            <ReactFlow
+              nodes={flowElements.nodes}
+              edges={flowElements.edges}
+              onNodeClick={(_, node) => {
+                const member = allMembers.find((candidate) => candidate.id === node.id);
+                if (member) {
+                  setSelectedMember(member);
+                }
+              }}
+              fitView
+              minZoom={0.35}
+              maxZoom={1.7}
+            >
+              <Background color="#c2b7a8" gap={24} />
+              <MiniMap pannable zoomable nodeStrokeWidth={3} />
+              <Controls showInteractive={false} />
+            </ReactFlow>
+          ) : (
             <div className="empty-flow">
-              No hay personas que coincidan con los filtros actuales.
+              Todavia no hay personas en el arbol. Crea la primera desde Administrar.
             </div>
           )}
         </div>
       </section>
 
       <section className="profile-band" id="historias">
-        <div className="profile">
-          <img src={selectedMember.photo} alt={selectedMember.name} />
-          <div className="profile-copy">
-            <p className="eyebrow">{selectedMember.branch}</p>
-            <h2>{selectedMember.name}</h2>
-            <p className="profile-role">{selectedMember.role}</p>
-            <p>{selectedMember.story}</p>
-            <dl>
-              <div>
-                <dt>Periodo</dt>
-                <dd>{selectedMember.years}</dd>
+        {selectedMember ? (
+          <>
+            <div className="profile">
+              <img src={selectedMember.photo} alt={selectedMember.name} />
+              <div className="profile-copy">
+                <p className="eyebrow">{selectedMember.branch}</p>
+                <h2>{selectedMember.name}</h2>
+                <p className="profile-role">{selectedMember.role}</p>
+                <p>{selectedMember.story}</p>
+                <dl>
+                  <div>
+                    <dt>Periodo</dt>
+                    <dd>{selectedMember.years}</dd>
+                  </div>
+                  <div>
+                    <dt>Origen</dt>
+                    <dd>{selectedMember.origin}</dd>
+                  </div>
+                  <div>
+                    <dt>Generacion</dt>
+                    <dd>{selectedGeneration + 1}</dd>
+                  </div>
+                  <div>
+                    <dt>Descendientes directos</dt>
+                    <dd>{selectedChildren.length}</dd>
+                  </div>
+                </dl>
               </div>
-              <div>
-                <dt>Origen</dt>
-                <dd>{selectedMember.origin}</dd>
-              </div>
-              <div>
-                <dt>Generacion</dt>
-                <dd>{selectedGeneration + 1}</dd>
-              </div>
-              <div>
-                <dt>Descendientes directos</dt>
-                <dd>{selectedChildren.length}</dd>
-              </div>
-            </dl>
-          </div>
-        </div>
-        <div className="profile-dossier">
-          <article>
-            <h3>Hijos y descendencia</h3>
-            {selectedChildren.length === 0 ? (
-              <p>Sin descendientes directos registrados todavia.</p>
-            ) : (
-              selectedChildren.map((child) => (
-                <button key={child.id} onClick={() => setSelectedMember(child)} type="button">
-                  <img src={child.photo} alt="" />
-                  <span>{child.name}</span>
-                </button>
-              ))
-            )}
-          </article>
-          <article>
-            <h3>Material asociado</h3>
-            <div className="dossier-tags">
-              <span><Camera size={15} /> {relatedPhotos.length} fotos</span>
-              <span><BookOpen size={15} /> Biografia</span>
-              <span><FolderArchive size={15} /> Documentos pendiente</span>
-              <span><Clock3 size={15} /> Audio pendiente</span>
             </div>
-          </article>
-          <article>
-            <h3>Ubicacion historica</h3>
-            <p>{selectedMember.origin}. El modulo de mapa queda preparado para conectar Leaflet o Mapbox.</p>
-          </article>
-        </div>
+            <div className="profile-dossier">
+              <article>
+                <h3>Hijos y descendencia</h3>
+                {selectedChildren.length === 0 ? (
+                  <p>Sin descendientes directos registrados todavia.</p>
+                ) : (
+                  selectedChildren.map((child) => (
+                    <button key={child.id} onClick={() => setSelectedMember(child)} type="button">
+                      <img src={child.photo} alt="" />
+                      <span>{child.name}</span>
+                    </button>
+                  ))
+                )}
+              </article>
+              <article>
+                <h3>Material asociado</h3>
+                <div className="dossier-tags">
+                  <span><Camera size={15} /> {relatedPhotos.length} fotos</span>
+                  <span><BookOpen size={15} /> Biografia</span>
+                  <span><FolderArchive size={15} /> Documentos pendiente</span>
+                  <span><Clock3 size={15} /> Audio pendiente</span>
+                </div>
+              </article>
+              <article>
+                <h3>Ubicacion historica</h3>
+                <p>{selectedMember.origin}. El modulo de mapa queda preparado para conectar Leaflet o Mapbox.</p>
+              </article>
+            </div>
+          </>
+        ) : (
+          <div className="empty-profile">
+            <p className="eyebrow">Historias familiares</p>
+            <h2>Selecciona o crea una persona</h2>
+            <p>Cuando agregues tu primer familiar, aqui aparecera su biografia, descendencia, fotos y contexto historico.</p>
+          </div>
+        )}
       </section>
 
       <section className="content-section" id="ramas">
@@ -836,7 +864,12 @@ export default function App() {
           <h2>Organizacion familiar clara</h2>
         </div>
         <div className="branch-grid">
-          {branches.map((branch) => (
+          {dynamicBranches.length === 0 ? (
+            <article className="empty-card">
+              <h3>Sin ramas creadas</h3>
+              <p>Agrega una persona desde Administrar y escribe su rama familiar para empezar.</p>
+            </article>
+          ) : dynamicBranches.map((branch) => (
             <article
               className="branch-card"
               key={branch.name}
@@ -859,7 +892,12 @@ export default function App() {
           <h2>Galeria restaurada y documentada</h2>
         </div>
         <div className="gallery-grid">
-          {allGallery.map((item) => (
+          {allGallery.length === 0 ? (
+            <article className="empty-card">
+              <h3>Sin imagenes cargadas</h3>
+              <p>Sube la primera fotografia familiar desde Administrar.</p>
+            </article>
+          ) : allGallery.map((item) => (
             <article className="photo-card" key={item.id || item.title}>
               <img src={item.image} alt={item.title} />
               <div>
@@ -881,7 +919,15 @@ export default function App() {
           </p>
         </div>
         <div className="timeline">
-          {timeline.map((event) => (
+          {timeline.length === 0 ? (
+            <article>
+              <time>Inicio</time>
+              <div>
+                <h3>Linea de tiempo vacia</h3>
+                <p>Cuando registres eventos familiares, aqui se convertiran en una cronologia documental.</p>
+              </div>
+            </article>
+          ) : timeline.map((event) => (
             <article key={event.year}>
               <time>{event.year}</time>
               <div>

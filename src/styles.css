@@ -615,6 +615,16 @@ nav a {
   margin: 8px 0 0;
 }
 
+.empty-profile {
+  max-width: 760px;
+  color: #fffaf2;
+}
+
+.empty-profile p:not(.eyebrow) {
+  color: #e4d9c9;
+  line-height: 1.7;
+}
+
 .profile-dossier {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -700,6 +710,27 @@ nav a {
   border: 1px solid #e1d6c6;
   border-top: 4px solid var(--branch-color, #e1d6c6);
   border-radius: 8px;
+}
+
+.empty-card {
+  min-height: 180px;
+  display: grid;
+  align-content: center;
+  gap: 10px;
+  padding: 18px;
+  border: 1px dashed #cfc1ae;
+  border-radius: 8px;
+  background: #fffaf2;
+}
+
+.empty-card h3 {
+  margin: 0;
+}
+
+.empty-card p {
+  margin: 0;
+  color: #635b52;
+  line-height: 1.55;
 }
 
 .branch-card img,
