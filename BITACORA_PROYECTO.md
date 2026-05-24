@@ -271,6 +271,18 @@ Resultado:
 - El perfil muestra el vinculo guardado.
 - Se agrego ayuda en el formulario explicando que, para un arbol genealogico correcto, lo ideal es conectar hijos con padre/madre directo y usar sobrina/nieta/prima como descripcion si falta una generacion intermedia.
 
+### 12. Refuerzo visual de descendencia
+
+Se ajusto el arbol para que la linea de descendencia y la etiqueta de relacion sean mas claras.
+
+Resultado:
+
+- Mayor separacion vertical entre generaciones.
+- Lineas de conexion mas gruesas y con sombra.
+- Etiqueta de relacion movida fuera de la tarjeta y colocada sobre la linea.
+- Etiqueta con flecha visual, por ejemplo `↓ Hija`.
+- Tarjeta del familiar mas compacta para evitar que tape la conexion.
+
 ## Verificaciones realizadas
 
 Se ejecuto:
@@ -296,6 +308,7 @@ Resultados:
 - Normalizacion automatica a nombre propio en el panel administrativo.
 - Correccion de error por perfil sin persona seleccionada.
 - Lineas genealogicas mas visibles con etiqueta de vinculo.
+- Refuerzo visual de descendencia entre tarjetas.
 
 URL local de desarrollo:
 
@@ -358,6 +371,7 @@ El repo esta publicado en GitHub y sincronizado con la rama `main`.
 ## Historial de commits
 
 ```text
+Pendiente Reforzar visualmente lineas de descendencia
 668245a Mejorar conexiones y vinculos genealogicos
 e7204c9 Normalizar captura de nombres familiares
 c8d2db3 Separar panel administrativo del album

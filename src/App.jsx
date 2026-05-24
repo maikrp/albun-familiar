@@ -116,7 +116,7 @@ function createFlowElements(members, filters, selectedMemberId) {
     const x = childXs.length > 0
       ? childXs.reduce((total, value) => total + value, 0) / childXs.length
       : nextLeaf++ * 250;
-    positions.set(member.id, { x, y: depth * 245 });
+    positions.set(member.id, { x, y: depth * 310 });
     return x;
   }
 
@@ -136,7 +136,7 @@ function createFlowElements(members, filters, selectedMemberId) {
           <div className="flow-member">
             <img src={member.photo} alt="" />
             <strong>{member.name}</strong>
-            <span>{member.relationship || member.role}</span>
+            <span className="flow-role">{member.role}</span>
             <small>{member.years}</small>
           </div>
         ),
@@ -158,7 +158,7 @@ function createFlowElements(members, filters, selectedMemberId) {
       target: member.id,
       type: 'smoothstep',
       animated: selectedMemberId === member.id,
-      label: member.relationship || 'Descendiente',
+      label: `↓ ${member.relationship || 'Descendiente'}`,
       labelBgPadding: [8, 4],
       labelBgBorderRadius: 6,
       labelBgStyle: { fill: '#fffaf2', fillOpacity: 0.92 },
@@ -166,7 +166,7 @@ function createFlowElements(members, filters, selectedMemberId) {
         type: MarkerType.ArrowClosed,
         color: getBranchStyle(member.branch).color,
       },
-      style: { stroke: getBranchStyle(member.branch).color, strokeWidth: 3 },
+      style: { stroke: getBranchStyle(member.branch).color, strokeWidth: 5 },
     }));
 
   return { nodes, edges };

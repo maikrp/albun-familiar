@@ -404,33 +404,37 @@ nav a {
 }
 
 .flow-shell .react-flow__node {
-  width: 172px;
+  width: 168px;
   border: 2px solid #d9cfbf;
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.94);
 }
 
 .flow-shell .react-flow__edge-path {
-  filter: drop-shadow(0 2px 2px rgba(35, 32, 28, 0.18));
+  filter: drop-shadow(0 2px 2px rgba(35, 32, 28, 0.35));
+  stroke-linecap: round;
 }
 
 .flow-shell .react-flow__edge-text {
-  fill: #4b463f;
-  font-size: 12px;
-  font-weight: 800;
+  fill: #23201c;
+  font-size: 13px;
+  font-weight: 900;
+  paint-order: stroke;
+  stroke: #fffaf2;
+  stroke-width: 4px;
 }
 
 .flow-member {
   display: grid;
   justify-items: center;
-  gap: 8px;
+  gap: 7px;
   padding: 10px;
   text-align: center;
 }
 
 .flow-member img {
-  width: 68px;
-  height: 68px;
+  width: 62px;
+  height: 62px;
   object-fit: cover;
   border-radius: 50%;
 }
@@ -441,7 +445,7 @@ nav a {
   line-height: 1.2;
 }
 
-.flow-member span {
+.flow-role {
   color: #34524a;
   font-size: 0.78rem;
   font-weight: 800;
