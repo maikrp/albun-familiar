@@ -383,7 +383,7 @@ El repo esta publicado en GitHub y sincronizado con la rama `main`.
 ## Historial de commits
 
 ```text
-Pendiente Migrar registros existentes a proper name
+b13cdd2 Normalizar registros existentes
 4aee52e Reforzar lineas de descendencia
 668245a Mejorar conexiones y vinculos genealogicos
 e7204c9 Normalizar captura de nombres familiares
