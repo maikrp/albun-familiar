@@ -434,7 +434,7 @@ El repo esta publicado en GitHub y sincronizado con la rama `main`.
 ## Historial de commits
 
 ```text
-Pendiente Agregar edicion de personas cargadas
+0b4a4ba Agregar edicion de personas
 6df1d6e Preparar Supabase Storage con WebP
 ddf9360 Agregar campo de cedula familiar
 b13cdd2 Normalizar registros existentes
