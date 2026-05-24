@@ -271,8 +271,13 @@ function parseCivilRegistryText(text) {
     madre: '',
     fechaNacimiento: '',
     nacionalidad: '',
+    lugarNacimiento: '',
     edad: '',
   };
+
+  let nameFirst = '';
+  let nameLastName1 = '';
+  let nameLastName2 = '';
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
@@ -285,7 +290,7 @@ function parseCivilRegistryText(text) {
       }
       if (index + 1 < lines.length) {
         const nextLine = lines[index + 1];
-        const isKey = /c[eé]dula|nombre|hijo|nacionalidad|edad|marginal|conocido/i.test(nextLine);
+        const isKey = /c[eé]dula|nombre|apellido|hijo|nacionalidad|edad|marginal|conocido|fecha|lugar|identificaci[oó]n|empadronado|fallecido|^y$|^y\s*:/i.test(nextLine);
         if (!isKey) {
           return nextLine;
         }
@@ -297,14 +302,22 @@ function parseCivilRegistryText(text) {
       data.cedula = extractValue(line, i);
     } else if (/nombre\s+completo/i.test(line)) {
       data.nombre = extractValue(line, i);
+    } else if (/^nombre/i.test(line)) {
+      nameFirst = extractValue(line, i);
+    } else if (/primer\s+apellido/i.test(line)) {
+      nameLastName1 = extractValue(line, i);
+    } else if (/segundo\s+apellido/i.test(line)) {
+      nameLastName2 = extractValue(line, i);
     } else if (/hijo\/a\s+de/i.test(line)) {
       data.padre = extractValue(line, i);
     } else if (/^y\s*:/i.test(line) || /^y\s+/i.test(line) || line.trim().toLowerCase() === 'y') {
       if (data.padre) {
         data.madre = extractValue(line, i);
       }
-    } else if (/fecha\s+nacimiento/i.test(line)) {
+    } else if (/fecha\s*(de)?\s*nacimiento/i.test(line)) {
       data.fechaNacimiento = extractValue(line, i);
+    } else if (/lugar\s*(de)?\s*nacimiento/i.test(line)) {
+      data.lugarNacimiento = extractValue(line, i);
     } else if (/nacionalidad/i.test(line)) {
       data.nacionalidad = extractValue(line, i);
     } else if (/edad/i.test(line)) {
@@ -312,9 +325,13 @@ function parseCivilRegistryText(text) {
     }
   }
 
+  if (nameFirst || nameLastName1 || nameLastName2) {
+    data.nombre = [nameFirst, nameLastName1, nameLastName2].filter(Boolean).join(' ');
+  }
+
   const cleanField = (val) => {
     if (!val) return '';
-    const clipMatch = val.match(/\s*(c[eé]dula|nombre|hijo|nacionalidad|edad|marginal|conocido|fecha)/i);
+    const clipMatch = val.match(/\s*(c[eé]dula|nombre|apellido|hijo|nacionalidad|edad|marginal|conocido|fecha|lugar|identificaci[oó]n|empadronado|fallecido|y\s*:)/i);
     if (clipMatch) {
       return val.slice(0, clipMatch.index).trim();
     }
@@ -326,12 +343,22 @@ function parseCivilRegistryText(text) {
   data.padre = cleanField(data.padre);
   data.madre = cleanField(data.madre);
   data.fechaNacimiento = cleanField(data.fechaNacimiento);
+  data.lugarNacimiento = cleanField(data.lugarNacimiento);
   data.nacionalidad = cleanField(data.nacionalidad);
   data.edad = cleanField(data.edad);
 
+  // Fallbacks: global matching strictly stopping at newlines or tabs [ \t]
   if (!data.nombre) {
-    const nameMatch = text.match(/Nombre\s+Completo\s*[:\t]?\s*([A-ZÁÉÍÓÚÑa-záéíóúñ \t]+)/i);
-    if (nameMatch) data.nombre = nameMatch[1].trim();
+    const nameMatch = text.match(/Nombre\s*[:\t]?\s*([A-ZÁÉÍÓÚÑa-záéíóúñ \t]+)/i);
+    const ln1Match = text.match(/Primer\s+Apellido\s*[:\t]?\s*([A-ZÁÉÍÓÚÑa-záéíóúñ \t]+)/i);
+    const ln2Match = text.match(/Segundo\s+Apellido\s*[:\t]?\s*([A-ZÁÉÍÓÚÑa-záéíóúñ \t]+)/i);
+    if (nameMatch || ln1Match || ln2Match) {
+      data.nombre = [
+        nameMatch ? nameMatch[1] : '',
+        ln1Match ? ln1Match[1] : '',
+        ln2Match ? ln2Match[1] : ''
+      ].filter(Boolean).join(' ');
+    }
   }
   if (!data.cedula) {
     const idMatch = text.match(/C[eé]dula\s*[:\t]?\s*([0-9\-]+)/i);
@@ -693,13 +720,17 @@ export default function App() {
       ? parsed.fechaNacimiento.split('/').pop().trim()
       : '';
 
+    const originExtracted = parsed.lugarNacimiento 
+      ? toProperName(parsed.lugarNacimiento)
+      : (parsed.nacionalidad.toLowerCase().includes('costarricense') ? 'Costa Rica' : toProperName(parsed.nacionalidad));
+
     setMemberForm((current) => ({
       ...current,
       name: toProperName(parsed.nombre),
       nationalId: parsed.cedula.trim(),
       birthYear: birthYearExtracted,
-      origin: parsed.nacionalidad.toLowerCase().includes('costarricense') ? 'Costa Rica' : toProperName(parsed.nacionalidad),
-      story: `Ficha registrada desde el Registro Civil. Edad: ${toProperName(parsed.edad)}.`,
+      origin: originExtracted,
+      story: `Ficha registrada desde el Registro Civil.${parsed.edad ? ` Edad: ${toProperName(parsed.edad)}.` : ''}`,
     }));
 
     setParsedParents({
@@ -1847,6 +1878,25 @@ export default function App() {
           <Heart size={16} />
           Albun Familiar
         </span>
+        <a 
+          href="https://www.facebook.com/groups/473677735983969/media" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={{ 
+            display: 'inline-flex', 
+            alignItems: 'center', 
+            gap: '0.4rem', 
+            color: 'inherit', 
+            textDecoration: 'none',
+            opacity: 0.8,
+            transition: 'opacity 0.2s ease'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+          onMouseLeave={(e) => e.currentTarget.style.opacity = '0.8'}
+        >
+          <Camera size={16} />
+          Grupo de Facebook
+        </a>
         <span>
           <Sparkles size={16} />
           {session?.name || 'Archivo privado en crecimiento'}
