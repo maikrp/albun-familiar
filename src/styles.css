@@ -86,13 +86,21 @@ img {
   text-transform: uppercase;
 }
 
-.lock-panel h1,
 .hero h1 {
   margin: 0;
   font-family: Georgia, "Times New Roman", serif;
   font-size: clamp(3rem, 8vw, 6.2rem);
   line-height: 0.95;
   letter-spacing: 0;
+}
+
+.lock-panel h1 {
+  margin: 0 0 16px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2rem, 5vw, 2.5rem);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: #23201c;
 }
 
 .lock-panel form {
