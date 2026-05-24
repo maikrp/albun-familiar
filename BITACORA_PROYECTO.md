@@ -343,7 +343,7 @@ El repo esta publicado en GitHub y sincronizado con la rama `main`.
 ## Historial de commits
 
 ```text
-Pendiente Normalizar nombres y corregir estado vacio
+e7204c9 Normalizar captura de nombres familiares
 c8d2db3 Separar panel administrativo del album
 feea566 Limpiar datos de ejemplo familiar
 58414b1 Agregar arbol interactivo y filtros familiares
