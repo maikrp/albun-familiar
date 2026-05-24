@@ -327,7 +327,7 @@ El repo esta publicado en GitHub y sincronizado con la rama `main`.
 ## Historial de commits
 
 ```text
-Pendiente Separar panel administrativo externo
+c8d2db3 Separar panel administrativo del album
 feea566 Limpiar datos de ejemplo familiar
 58414b1 Agregar arbol interactivo y filtros familiares
 9f906da Agregar modulo administrativo familiar
