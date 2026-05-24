@@ -296,7 +296,7 @@ El repo esta publicado en GitHub y sincronizado con la rama `main`.
 ## Historial de commits
 
 ```text
-Pendiente Mejoras tipo MyHeritage con arbol interactivo
+58414b1 Agregar arbol interactivo y filtros familiares
 9f906da Agregar modulo administrativo familiar
 7fa9456 Agregar fondo de arbol genealogico
 afa1978 Agregar favicon del album
