@@ -30,7 +30,15 @@ import {
   X,
 } from 'lucide-react';
 import { archiveSteps, branches, familyMembers, gallery, timeline } from './data/familyData.js';
-import { isSupabaseConfigured } from './lib/supabase.js';
+import {
+  convertImageFileToWebp,
+  sanitizeStorageSegment,
+} from './lib/media.js';
+import {
+  familyMediaBucket,
+  isSupabaseConfigured,
+  supabase,
+} from './lib/supabase.js';
 
 const usersStorageKey = 'family-users';
 const sessionStorageKey = 'family-session';
@@ -237,6 +245,15 @@ function readNormalizedStorageList(key, normalizer) {
   return normalizedItems;
 }
 
+function publicStorageUrl(path) {
+  if (!supabase) {
+    return null;
+  }
+
+  const { data } = supabase.storage.from(familyMediaBucket).getPublicUrl(path);
+  return data.publicUrl;
+}
+
 export default function App() {
   const [query, setQuery] = useState('');
   const [customMembers, setCustomMembers] = useState(() => readNormalizedStorageList(customMembersStorageKey, normalizeMember));
@@ -244,6 +261,7 @@ export default function App() {
   const [memberForm, setMemberForm] = useState(emptyMemberForm);
   const [photoForm, setPhotoForm] = useState(emptyPhotoForm);
   const [adminMessage, setAdminMessage] = useState('');
+  const [uploadStatus, setUploadStatus] = useState('');
   const [branchFilter, setBranchFilter] = useState('all');
   const [generationFilter, setGenerationFilter] = useState('all');
   const [session, setSession] = useState(() => {
@@ -381,14 +399,53 @@ export default function App() {
     }));
   }
 
-  function readFileAsDataUrl(file, callback) {
+  async function uploadWebpToSupabase(file, folder) {
+    if (!supabase) {
+      throw new Error('Supabase no esta configurado en variables de entorno.');
+    }
+
+    const converted = await convertImageFileToWebp(file);
+    const timestamp = Date.now();
+    const path = `${sanitizeStorageSegment(folder)}/${timestamp}-${converted.file.name}`;
+    const { error } = await supabase.storage
+      .from(familyMediaBucket)
+      .upload(path, converted.file, {
+        cacheControl: '31536000',
+        contentType: 'image/webp',
+        upsert: false,
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    return {
+      url: publicStorageUrl(path),
+      path,
+      ...converted,
+    };
+  }
+
+  async function handleImageFile(file, callback, folder) {
     if (!file) {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => callback(String(reader.result));
-    reader.readAsDataURL(file);
+    setUploadStatus('Convirtiendo imagen a WebP...');
+    try {
+      if (supabase) {
+        const uploaded = await uploadWebpToSupabase(file, folder);
+        callback(uploaded.url);
+        setUploadStatus(`Imagen WebP subida a Supabase (${Math.round(uploaded.webpBytes / 1024)} KB).`);
+        return;
+      }
+
+      const converted = await convertImageFileToWebp(file);
+      callback(converted.dataUrl);
+      setUploadStatus(`Imagen convertida a WebP local (${Math.round(converted.webpBytes / 1024)} KB). Configura Supabase para subirla a la nube.`);
+    } catch (error) {
+      setUploadStatus(error.message || 'No se pudo procesar la imagen.');
+    }
   }
 
   function addMember(event) {
@@ -708,7 +765,11 @@ export default function App() {
                 id="member-photo-file"
                 accept="image/*"
                 type="file"
-                onChange={(event) => readFileAsDataUrl(event.target.files?.[0], (value) => updateMemberForm('photo', value))}
+                onChange={(event) => handleImageFile(
+                  event.target.files?.[0],
+                  (value) => updateMemberForm('photo', value),
+                  `personas/${memberForm.branch || 'general'}`,
+                )}
               />
               <label htmlFor="member-story">Historia o anecdota</label>
               <textarea
@@ -769,7 +830,11 @@ export default function App() {
                 id="photo-file"
                 accept="image/*"
                 type="file"
-                onChange={(event) => readFileAsDataUrl(event.target.files?.[0], (value) => updatePhotoForm('image', value))}
+                onChange={(event) => handleImageFile(
+                  event.target.files?.[0],
+                  (value) => updatePhotoForm('image', value),
+                  `galeria/${photoForm.branch || 'general'}`,
+                )}
               />
               {photoForm.image && (
                 <img className="admin-preview" src={photoForm.image} alt="Vista previa" />
@@ -782,6 +847,7 @@ export default function App() {
           </div>
 
           {adminMessage && <strong className="admin-message">{adminMessage}</strong>}
+          {uploadStatus && <strong className="admin-message">{uploadStatus}</strong>}
 
           <div className="admin-lists">
             <article>

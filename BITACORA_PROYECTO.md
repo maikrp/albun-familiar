@@ -306,6 +306,29 @@ Resultado:
 - La busqueda del arbol tambien encuentra personas por cedula.
 - El dato se conserva en el formato digitado para respetar guiones o formatos oficiales.
 
+### 15. Preparacion de Supabase Storage y conversion WebP
+
+Se inicio la integracion real con Supabase Storage para imagenes familiares.
+
+Resultado:
+
+- Las claves reales se guardaron solo en `C:\python\respaldo_claves_albun_familiar.txt`.
+- Se verifico que el repositorio no contenga las claves reales.
+- Se agrego `VITE_SUPABASE_MEDIA_BUCKET` a `.env.example`.
+- Se agrego `SUPABASE_SETUP.md` con configuracion de bucket, politicas recomendadas y advertencia de no usar `service_role` en frontend.
+- Se agrego conversion de imagenes a WebP en navegador antes de subir o previsualizar.
+- Se limita la imagen fuente a 10 MB.
+- Se reduce la dimension maxima a 1600 px.
+- Se usa WebP calidad 82%.
+- Se sube a Supabase Storage con `upsert: false`.
+- Si Supabase no esta configurado, la app convierte a WebP localmente para vista previa y avisa al usuario.
+
+Referencia consultada en `C:\python`:
+
+- `TRATO_DE_IMAGENES.md`: estandar WebP calidad 85 y variantes responsivas.
+- `Apps-Projects/albergues/import_shelters_supabase.py`: conversion a WebP antes de subir a Supabase.
+- `Apps-Projects/busqueda-parques-mascotas/sync_park_images.py`: uso de `.env`, WebP y subida a Storage.
+
 ## Verificaciones realizadas
 
 Se ejecuto:
@@ -334,6 +357,7 @@ Resultados:
 - Refuerzo visual de descendencia entre tarjetas.
 - Migracion automatica de registros existentes a nombre propio.
 - Campo de cedula disponible para busqueda e identificacion futura.
+- Supabase Storage preparado con conversion WebP y controles de cuota.
 
 URL local de desarrollo:
 
@@ -396,6 +420,7 @@ El repo esta publicado en GitHub y sincronizado con la rama `main`.
 ## Historial de commits
 
 ```text
+Pendiente Preparar Supabase Storage con WebP
 ddf9360 Agregar campo de cedula familiar
 b13cdd2 Normalizar registros existentes
 4aee52e Reforzar lineas de descendencia

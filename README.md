@@ -34,10 +34,13 @@ Copia `.env.example` a `.env.local` y completa los datos:
 ```env
 VITE_SUPABASE_URL=https://tu-proyecto.supabase.co
 VITE_SUPABASE_ANON_KEY=coloca_aqui_la_clave_publica_anon
+VITE_SUPABASE_MEDIA_BUCKET=family-media
 VITE_FAMILY_PASSWORD=familia
 ```
 
 `VITE_FAMILY_PASSWORD` controla la contrasena de acceso del prototipo. La clave real de Supabase no se incluye en git; queda respaldada localmente en la ruta solicitada.
+
+Consulta `SUPABASE_SETUP.md` para crear el bucket de imagenes y las politicas recomendadas. Nunca uses la llave `service_role` en el frontend.
 
 ## Estructura futura recomendada
 

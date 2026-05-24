@@ -8,3 +8,4 @@ export const supabase = supabaseUrl && supabaseAnonKey
   : null;
 
 export const isSupabaseConfigured = Boolean(supabase);
+export const familyMediaBucket = import.meta.env.VITE_SUPABASE_MEDIA_BUCKET || 'family-media';
