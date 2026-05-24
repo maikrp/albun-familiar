@@ -358,7 +358,7 @@ El repo esta publicado en GitHub y sincronizado con la rama `main`.
 ## Historial de commits
 
 ```text
-Pendiente Mejorar conexiones genealogicas y vinculos
+668245a Mejorar conexiones y vinculos genealogicos
 e7204c9 Normalizar captura de nombres familiares
 c8d2db3 Separar panel administrativo del album
 feea566 Limpiar datos de ejemplo familiar
