@@ -1,5 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import {
+  Background,
+  Controls,
+  MiniMap,
+  ReactFlow,
+} from '@xyflow/react';
+import '@xyflow/react/dist/style.css';
+import {
   BookOpen,
   Camera,
   Clock3,
@@ -47,32 +54,92 @@ const emptyPhotoForm = {
   image: '',
 };
 
-function buildTree(members, parentId = null) {
-  return members
-    .filter((member) => member.parentId === parentId)
-    .map((member) => ({
-      ...member,
-      children: buildTree(members, member.id),
-    }));
+const branchStyles = {
+  Gonzalez: { color: '#315d8c', label: 'Rama paterna' },
+  Vargas: { color: '#4e7c55', label: 'Rama materna' },
+  Mora: { color: '#b9822f', label: 'Descendencia' },
+  Chaves: { color: '#7d4f8f', label: 'Familia politica' },
+  General: { color: '#7f6a54', label: 'General' },
+};
+
+function getBranchStyle(branch) {
+  return branchStyles[branch] || branchStyles.General;
 }
 
-function TreeNode({ node, onSelect }) {
-  return (
-    <li>
-      <button className="member-card" onClick={() => onSelect(node)} type="button">
-        <img src={node.photo} alt={node.name} />
-        <strong>{node.name}</strong>
-        <span>{node.years}</span>
-      </button>
-      {node.children.length > 0 && (
-        <ul>
-          {node.children.map((child) => (
-            <TreeNode key={child.id} node={child} onSelect={onSelect} />
-          ))}
-        </ul>
-      )}
-    </li>
-  );
+function getMemberGeneration(member, members, cache = new Map()) {
+  if (cache.has(member.id)) {
+    return cache.get(member.id);
+  }
+
+  if (!member.parentId) {
+    cache.set(member.id, 0);
+    return 0;
+  }
+
+  const parent = members.find((candidate) => candidate.id === member.parentId);
+  const generation = parent ? getMemberGeneration(parent, members, cache) + 1 : 0;
+  cache.set(member.id, generation);
+  return generation;
+}
+
+function createFlowElements(members, filters, selectedMemberId) {
+  const generationCache = new Map();
+  const visibleMembers = members.filter((member) => {
+    const generation = getMemberGeneration(member, members, generationCache);
+    const haystack = `${member.name} ${member.branch} ${member.origin} ${member.role}`.toLowerCase();
+    const matchesSearch = haystack.includes(filters.query.toLowerCase());
+    const matchesBranch = filters.branch === 'all' || member.branch === filters.branch;
+    const matchesGeneration = filters.generation === 'all' || String(generation) === filters.generation;
+    return matchesSearch && matchesBranch && matchesGeneration;
+  });
+  const visibleIds = new Set(visibleMembers.map((member) => member.id));
+  const grouped = visibleMembers.reduce((accumulator, member) => {
+    const generation = getMemberGeneration(member, members, generationCache);
+    return {
+      ...accumulator,
+      [generation]: [...(accumulator[generation] || []), member],
+    };
+  }, {});
+
+  const nodes = Object.entries(grouped).flatMap(([generation, generationMembers]) => {
+    const y = Number(generation) * 210;
+    const totalWidth = (generationMembers.length - 1) * 210;
+    return generationMembers.map((member, index) => {
+      const branchStyle = getBranchStyle(member.branch);
+      return {
+        id: member.id,
+        position: { x: index * 210 - totalWidth / 2, y },
+        data: {
+          label: (
+            <div className="flow-member">
+              <img src={member.photo} alt="" />
+              <strong>{member.name}</strong>
+              <span>{member.years}</span>
+            </div>
+          ),
+        },
+        style: {
+          borderColor: branchStyle.color,
+          boxShadow: selectedMemberId === member.id
+            ? `0 0 0 3px ${branchStyle.color}44, 0 14px 30px rgba(35, 32, 28, 0.16)`
+            : '0 10px 24px rgba(35, 32, 28, 0.1)',
+        },
+      };
+    });
+  });
+
+  const edges = visibleMembers
+    .filter((member) => member.parentId && visibleIds.has(member.parentId))
+    .map((member) => ({
+      id: `${member.parentId}-${member.id}`,
+      source: member.parentId,
+      target: member.id,
+      type: 'smoothstep',
+      animated: selectedMemberId === member.id,
+      style: { stroke: getBranchStyle(member.branch).color, strokeWidth: 2 },
+    }));
+
+  return { nodes, edges };
 }
 
 function Stat({ icon: Icon, label, value }) {
@@ -97,6 +164,8 @@ export default function App() {
   const [memberForm, setMemberForm] = useState(emptyMemberForm);
   const [photoForm, setPhotoForm] = useState(emptyPhotoForm);
   const [adminMessage, setAdminMessage] = useState('');
+  const [branchFilter, setBranchFilter] = useState('all');
+  const [generationFilter, setGenerationFilter] = useState('all');
   const [session, setSession] = useState(() => {
     const savedSession = localStorage.getItem(sessionStorageKey);
     return savedSession ? JSON.parse(savedSession) : null;
@@ -111,12 +180,31 @@ export default function App() {
   const allMembers = useMemo(() => [...familyMembers, ...customMembers], [customMembers]);
   const allGallery = useMemo(() => [...gallery, ...customGallery], [customGallery]);
   const [selectedMember, setSelectedMember] = useState(familyMembers[0]);
-  const familyTree = useMemo(() => buildTree(allMembers), [allMembers]);
+  const generations = useMemo(() => {
+    const cache = new Map();
+    return [...new Set(allMembers.map((member) => getMemberGeneration(member, allMembers, cache)))]
+      .sort((first, second) => first - second);
+  }, [allMembers]);
+  const branchOptions = useMemo(
+    () => [...new Set(allMembers.map((member) => member.branch).filter(Boolean))].sort(),
+    [allMembers],
+  );
+  const flowElements = useMemo(
+    () => createFlowElements(
+      allMembers,
+      { branch: branchFilter, generation: generationFilter, query },
+      selectedMember.id,
+    ),
+    [allMembers, branchFilter, generationFilter, query, selectedMember.id],
+  );
 
   const filteredMembers = allMembers.filter((member) => {
     const text = `${member.name} ${member.branch} ${member.origin} ${member.role}`.toLowerCase();
     return text.includes(query.toLowerCase());
   });
+  const selectedChildren = allMembers.filter((member) => member.parentId === selectedMember.id);
+  const selectedGeneration = getMemberGeneration(selectedMember, allMembers);
+  const relatedPhotos = allGallery.filter((item) => item.branch === selectedMember.branch);
 
   const isUnlocked = Boolean(session);
 
@@ -603,8 +691,8 @@ export default function App() {
           <p className="eyebrow">Tronco principal</p>
           <h2>Arbol genealogico maestro</h2>
           <p>
-            La estructura parte de los miembros mas antiguos conocidos y baja hacia hijos, nietos y
-            nuevas generaciones. Cada tarjeta abre un perfil con contexto, origen y anecdota.
+            Vista interactiva con zoom, arrastre, busqueda y filtros por rama o generacion. Cada
+            tarjeta abre el perfil documental de la persona.
           </p>
           <div className="search-box">
             <Search size={18} />
@@ -613,6 +701,41 @@ export default function App() {
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Buscar por nombre, rama u origen"
             />
+          </div>
+          <div className="tree-filters">
+            <label htmlFor="branch-filter">Rama</label>
+            <select
+              id="branch-filter"
+              value={branchFilter}
+              onChange={(event) => setBranchFilter(event.target.value)}
+            >
+              <option value="all">Todas las ramas</option>
+              {branchOptions.map((branch) => (
+                <option key={branch} value={branch}>
+                  {branch}
+                </option>
+              ))}
+            </select>
+            <label htmlFor="generation-filter">Generacion</label>
+            <select
+              id="generation-filter"
+              value={generationFilter}
+              onChange={(event) => setGenerationFilter(event.target.value)}
+            >
+              <option value="all">Todas las generaciones</option>
+              {generations.map((generation) => (
+                <option key={generation} value={String(generation)}>
+                  Generacion {generation + 1}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="branch-legend">
+            {branchOptions.map((branch) => (
+              <span key={branch} style={{ '--branch-color': getBranchStyle(branch).color }}>
+                {getBranchStyle(branch).label}: {branch}
+              </span>
+            ))}
           </div>
           <div className="mini-results">
             {filteredMembers.map((member) => (
@@ -623,21 +746,36 @@ export default function App() {
             ))}
           </div>
         </div>
-        <div className="tree-shell">
-          <div className="tree">
-            <ul>
-              {familyTree.map((node) => (
-                <TreeNode key={node.id} node={node} onSelect={setSelectedMember} />
-              ))}
-            </ul>
-          </div>
+        <div className="tree-shell flow-shell">
+          <ReactFlow
+            nodes={flowElements.nodes}
+            edges={flowElements.edges}
+            onNodeClick={(_, node) => {
+              const member = allMembers.find((candidate) => candidate.id === node.id);
+              if (member) {
+                setSelectedMember(member);
+              }
+            }}
+            fitView
+            minZoom={0.35}
+            maxZoom={1.7}
+          >
+            <Background color="#c2b7a8" gap={24} />
+            <MiniMap pannable zoomable nodeStrokeWidth={3} />
+            <Controls showInteractive={false} />
+          </ReactFlow>
+          {flowElements.nodes.length === 0 && (
+            <div className="empty-flow">
+              No hay personas que coincidan con los filtros actuales.
+            </div>
+          )}
         </div>
       </section>
 
       <section className="profile-band" id="historias">
         <div className="profile">
           <img src={selectedMember.photo} alt={selectedMember.name} />
-          <div>
+          <div className="profile-copy">
             <p className="eyebrow">{selectedMember.branch}</p>
             <h2>{selectedMember.name}</h2>
             <p className="profile-role">{selectedMember.role}</p>
@@ -651,8 +789,44 @@ export default function App() {
                 <dt>Origen</dt>
                 <dd>{selectedMember.origin}</dd>
               </div>
+              <div>
+                <dt>Generacion</dt>
+                <dd>{selectedGeneration + 1}</dd>
+              </div>
+              <div>
+                <dt>Descendientes directos</dt>
+                <dd>{selectedChildren.length}</dd>
+              </div>
             </dl>
           </div>
+        </div>
+        <div className="profile-dossier">
+          <article>
+            <h3>Hijos y descendencia</h3>
+            {selectedChildren.length === 0 ? (
+              <p>Sin descendientes directos registrados todavia.</p>
+            ) : (
+              selectedChildren.map((child) => (
+                <button key={child.id} onClick={() => setSelectedMember(child)} type="button">
+                  <img src={child.photo} alt="" />
+                  <span>{child.name}</span>
+                </button>
+              ))
+            )}
+          </article>
+          <article>
+            <h3>Material asociado</h3>
+            <div className="dossier-tags">
+              <span><Camera size={15} /> {relatedPhotos.length} fotos</span>
+              <span><BookOpen size={15} /> Biografia</span>
+              <span><FolderArchive size={15} /> Documentos pendiente</span>
+              <span><Clock3 size={15} /> Audio pendiente</span>
+            </div>
+          </article>
+          <article>
+            <h3>Ubicacion historica</h3>
+            <p>{selectedMember.origin}. El modulo de mapa queda preparado para conectar Leaflet o Mapbox.</p>
+          </article>
         </div>
       </section>
 
@@ -663,7 +837,11 @@ export default function App() {
         </div>
         <div className="branch-grid">
           {branches.map((branch) => (
-            <article className="branch-card" key={branch.name}>
+            <article
+              className="branch-card"
+              key={branch.name}
+              style={{ '--branch-color': getBranchStyle(branch.name.replace('Rama ', '')).color }}
+            >
               <img src={branch.cover} alt={branch.name} />
               <div>
                 <h3>{branch.name}</h3>

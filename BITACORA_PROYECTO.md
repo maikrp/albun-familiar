@@ -35,6 +35,9 @@ La aplicacion incluye:
 - Modulo administrativo para cargar personas.
 - Modulo administrativo para cargar imagenes.
 - Guardado local de registros administrativos.
+- Arbol genealogico interactivo con zoom y arrastre.
+- Filtros por rama familiar y generacion.
+- Perfil documental con descendencia, material asociado y ubicacion historica.
 - Ramas familiares con portadas.
 - Galeria de fotografias.
 - Linea de tiempo documental.
@@ -51,6 +54,7 @@ Tecnologias usadas:
 - JavaScript
 - CSS personalizado
 - lucide-react para iconos
+- React Flow para arbol genealogico interactivo
 - Supabase JS client preparado para uso futuro
 
 Archivos principales:
@@ -192,6 +196,26 @@ Nota:
 
 Los registros administrativos se guardan en `localStorage`. Esto permite avanzar en captura de informacion, pero el siguiente paso serio es mover estos datos a Supabase.
 
+### 7. Mejoras tipo MyHeritage adaptadas al proyecto
+
+Se tomaron ideas clave de plataformas genealogicas modernas y se adaptaron al enfoque privado, familiar y documental del proyecto.
+
+Resultado:
+
+- Se instalo `@xyflow/react`.
+- El arbol manual fue reemplazado por un arbol interactivo con React Flow.
+- El arbol permite zoom, arrastre, controles visuales y minimapa.
+- Se agregaron filtros por rama familiar.
+- Se agregaron filtros por generacion.
+- Se agrego leyenda visual por ramas con colores.
+- El perfil familiar se amplio como expediente documental.
+- El expediente muestra descendientes directos, fotos asociadas, biografia, documentos pendientes, audio pendiente y ubicacion historica.
+- Las ramas familiares ahora tienen color visual propio.
+
+Nota:
+
+La integracion actual usa datos locales y de ejemplo. Para escalar a miles de miembros, el siguiente paso es mover los datos a Supabase y mantener React Flow como capa visual.
+
 ## Verificaciones realizadas
 
 Se ejecuto:
@@ -211,6 +235,7 @@ Resultados:
 - Favicon verificado.
 - Fondo de arbol genealogico compilado correctamente.
 - Modulo administrativo compilado correctamente.
+- Arbol interactivo con React Flow compilado correctamente.
 
 URL local de desarrollo:
 
@@ -229,8 +254,11 @@ Actualmente permite:
 - Cargar personas desde el modulo administrativo.
 - Cargar imagenes desde el modulo administrativo.
 - Navegar el arbol genealogico.
+- Filtrar el arbol por rama y generacion.
+- Usar zoom, arrastre, minimapa y controles del arbol.
 - Seleccionar familiares.
 - Consultar perfiles.
+- Consultar expediente documental basico por persona.
 - Ver ramas familiares.
 - Ver galeria.
 - Revisar linea de tiempo.
@@ -247,6 +275,8 @@ El repo esta publicado en GitHub y sincronizado con la rama `main`.
 - Supabase esta preparado en codigo, pero falta configurar URL, llave anonima y tablas.
 - El modulo administrativo permite crear y eliminar registros locales, pero todavia no edita registros existentes.
 - La carga de imagenes por archivo usa datos locales del navegador; falta almacenamiento permanente en Supabase Storage.
+- El mapa historico esta descrito en el perfil, pero falta implementar Leaflet/Mapbox.
+- Documentos, audios y videos estan representados como estado pendiente dentro del expediente.
 
 ## Proximos pasos recomendados
 
@@ -255,15 +285,18 @@ El repo esta publicado en GitHub y sincronizado con la rama `main`.
 3. Migrar el modulo administrativo a Supabase Database y Supabase Storage.
 4. Agregar edicion de familiares e imagenes existentes.
 5. Crear editor avanzado de historias y anecdotas.
-6. Agregar roles: administrador, familiar invitado y lector.
-7. Agregar exportacion a PDF o album imprimible.
-8. Crear pagina de respaldo y organizacion de archivos familiares.
-9. Reemplazar datos de ejemplo por datos reales de la familia.
-10. Preparar despliegue en Vercel, Netlify o GitHub Pages.
+6. Implementar mapa historico con Leaflet o Mapbox.
+7. Agregar documentos, audios y videos por persona.
+8. Agregar roles: administrador, familiar invitado y lector.
+9. Agregar exportacion a PDF o album imprimible.
+10. Crear pagina de respaldo y organizacion de archivos familiares.
+11. Reemplazar datos de ejemplo por datos reales de la familia.
+12. Preparar despliegue en Vercel, Netlify o GitHub Pages.
 
 ## Historial de commits
 
 ```text
+Pendiente Mejoras tipo MyHeritage con arbol interactivo
 9f906da Agregar modulo administrativo familiar
 7fa9456 Agregar fondo de arbol genealogico
 afa1978 Agregar favicon del album

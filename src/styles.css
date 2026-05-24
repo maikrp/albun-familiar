@@ -299,6 +299,57 @@ nav a {
   margin-top: 24px;
 }
 
+.tree-filters {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.tree-filters label {
+  color: #4b463f;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.tree-filters select {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #d9d1c4;
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #23201c;
+  background: #fffaf2;
+}
+
+.branch-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.branch-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 9px;
+  border: 1px solid #d9d1c4;
+  border-radius: 8px;
+  background: #fffaf2;
+  color: #4b463f;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.branch-legend span::before {
+  content: "";
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--branch-color);
+}
+
 .mini-results {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -334,13 +385,66 @@ nav a {
 
 .tree-shell {
   position: relative;
-  overflow: auto;
+  overflow: hidden;
   padding: 20px 0 32px;
   background:
     linear-gradient(rgba(255, 250, 242, 0.78), rgba(255, 250, 242, 0.88)),
     url("/assets/genealogy-tree-bg.png") center / cover;
   border: 1px solid #e1d6c6;
   border-radius: 8px;
+}
+
+.flow-shell {
+  height: 640px;
+  padding: 0;
+}
+
+.flow-shell .react-flow {
+  background: transparent;
+}
+
+.flow-shell .react-flow__node {
+  width: 154px;
+  border: 2px solid #d9cfbf;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.flow-member {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  padding: 10px;
+  text-align: center;
+}
+
+.flow-member img {
+  width: 68px;
+  height: 68px;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.flow-member strong {
+  color: #23201c;
+  font-size: 0.9rem;
+  line-height: 1.2;
+}
+
+.flow-member span {
+  color: #786e62;
+  font-size: 0.78rem;
+}
+
+.empty-flow {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: #635b52;
+  text-align: center;
+  background: rgba(255, 250, 242, 0.72);
 }
 
 .tree {
@@ -489,7 +593,7 @@ nav a {
 
 .profile dl {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
   margin: 24px 0 0;
 }
@@ -511,6 +615,72 @@ nav a {
   margin: 8px 0 0;
 }
 
+.profile-dossier {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.profile-dossier article {
+  padding: 16px;
+  border: 1px solid rgba(255, 250, 242, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 250, 242, 0.08);
+  color: #fffaf2;
+}
+
+.profile-dossier h3 {
+  margin: 0 0 12px;
+  font-size: 1rem;
+}
+
+.profile-dossier p {
+  margin: 0;
+  color: #e4d9c9;
+  line-height: 1.6;
+}
+
+.profile-dossier button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px;
+  border: 1px solid rgba(255, 250, 242, 0.22);
+  border-radius: 8px;
+  color: #fffaf2;
+  background: transparent;
+}
+
+.profile-dossier button + button {
+  margin-top: 8px;
+}
+
+.profile-dossier button img {
+  width: 34px;
+  height: 34px;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.dossier-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dossier-tags span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 9px;
+  border: 1px solid rgba(255, 250, 242, 0.22);
+  border-radius: 8px;
+  color: #e4d9c9;
+  font-size: 0.82rem;
+}
+
 .section-heading {
   max-width: 760px;
   margin-bottom: 24px;
@@ -528,6 +698,7 @@ nav a {
   overflow: hidden;
   background: #fffaf2;
   border: 1px solid #e1d6c6;
+  border-top: 4px solid var(--branch-color, #e1d6c6);
   border-radius: 8px;
 }
 
@@ -816,6 +987,7 @@ footer span {
 
   .section-grid,
   .profile,
+  .profile-dossier,
   .admin-grid,
   .admin-lists,
   .archive-panel {
@@ -824,6 +996,10 @@ footer span {
 
   .profile > img {
     width: min(260px, 100%);
+  }
+
+  .profile dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .tool-row {
@@ -853,6 +1029,10 @@ footer span {
   .mini-results,
   .profile dl {
     grid-template-columns: 1fr;
+  }
+
+  .flow-shell {
+    height: 540px;
   }
 
   .lock-panel {
