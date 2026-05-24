@@ -264,7 +264,7 @@ El repo esta publicado en GitHub y sincronizado con la rama `main`.
 ## Historial de commits
 
 ```text
-Pendiente Agregar modulo administrativo de personas e imagenes
+9f906da Agregar modulo administrativo familiar
 7fa9456 Agregar fondo de arbol genealogico
 afa1978 Agregar favicon del album
 7ac066a Agregar registro e inicio de sesion
