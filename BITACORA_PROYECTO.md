@@ -1,9 +1,9 @@
 # Bitacora del Proyecto: Albun Familiar
 
-Fecha de actualizacion: 2026-05-24  
+Fecha de actualizacion: 2026-05-27  
 Repositorio: https://github.com/maikrp/albun-familiar.git  
 Rama principal: `main`  
-Estado general: prototipo web funcional publicado en GitHub
+Estado general: Aplicación web enlazada a base de datos de producción Supabase y pasarela Resend, desplegada en Vercel.
 
 ## Objetivo
 
@@ -360,6 +360,18 @@ Resultado:
 Nota:
 
 La API REST de Supabase no permite crear tablas directamente. Para aplicar la migracion se debe ejecutar el SQL desde Supabase SQL Editor, Supabase CLI o una conexion directa a Postgres.
+
+### 18. Conexión a Nueva Base de Datos Supabase e Integración con Resend
+
+Se migró la base de datos a un nuevo proyecto de Supabase y se resolvió la advertencia crítica de rebote de correos transaccionales integrando Resend.
+
+Resultado:
+- Nueva base de datos de Supabase enlazada: `https://jygvekxgpdyydhgyspve.supabase.co`.
+- Implementado el esquema de tablas completo y el protocolo de supervivencia Keep-Alive v3.0 (`keep_alive()` RPC) en la nueva base de datos.
+- Configurado e integrado **Resend** con el dominio `legado-familiar.com` para envíos de correo transaccionales seguros (`noreply@legado-familiar.com`).
+- Claves y accesos actualizados en los respaldos locales seguros (`respaldo_claves.txt` y `respaldo_claves_albun_familiar.txt`).
+- Variables de entorno locales (`.env.local`) y remotas en Vercel actualizadas en todos los entornos (`production`, `development` y `preview`).
+- Cron de supervivencia externo configurado con éxito en `cron-job.org` para mantener activo el plan gratuito.
 
 ## Verificaciones realizadas
 
