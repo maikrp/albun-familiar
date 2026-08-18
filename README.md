@@ -63,3 +63,10 @@ Repositorio remoto configurado:
 ```text
 https://github.com/maikrp/albun-familiar.git
 ```
+
+## Actualizacion 2026-08-17 - Cookies funcionales
+
+- Se agrego politica de cookies funcionales en `POLITICA_COOKIES_FUNCIONALES.md`.
+- No se detecto carga activa de cookies de analitica o marketing en el sitio publico.
+- No se agrega banner por ahora; si se incorpora GA/GTM/Meta Pixel u otro tracking, se debe activar consentimiento previo.
+
