@@ -69,4 +69,4 @@ https://github.com/maikrp/albun-familiar.git
 - Se agrego politica de cookies funcionales en `POLITICA_COOKIES_FUNCIONALES.md`.
 - No se detecto carga activa de cookies de analitica o marketing en el sitio publico.
 - No se agrega banner por ahora; si se incorpora GA/GTM/Meta Pixel u otro tracking, se debe activar consentimiento previo.
-
+- Pendiente: habilitar Google Analytics 4 o GTM, definir el ID de medicion por ambiente y conectarlo al consentimiento de cookies antes de cargar scripts de analitica.
